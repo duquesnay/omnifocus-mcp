@@ -333,6 +333,60 @@ export const CREATE_TASK_SCRIPT = `
   }
 `;
 
+// Simplified version to debug freeze issue
+export const UPDATE_TASK_SCRIPT_SIMPLE = `
+  const taskId = {{taskId}};
+  const updates = {{updates}};
+  
+  try {
+    // Find task by ID - simplified search
+    const tasks = doc.flattenedTasks();
+    let task = null;
+    for (let i = 0; i < tasks.length; i++) { // Search all tasks
+      if (tasks[i].id() === taskId) {
+        task = tasks[i];
+        break;
+      }
+    }
+    if (!task) {
+      return JSON.stringify({ error: true, message: 'Task not found' });
+    }
+    
+    // Apply updates - basic properties
+    if (updates.name !== undefined) task.name = updates.name;
+    if (updates.note !== undefined) task.note = updates.note;
+    if (updates.flagged !== undefined) task.flagged = updates.flagged;
+    
+    // Handle project assignment (simplified version)
+    if (updates.projectId !== undefined) {
+      if (updates.projectId === null) {
+        // Move to inbox
+        task.assignedContainer = doc.inbox;
+      } else {
+        // Find and assign project by ID
+        const projects = doc.flattenedProjects();
+        for (let i = 0; i < projects.length; i++) {
+          if (projects[i].id.primaryKey === updates.projectId) {
+            task.assignedContainer = projects[i];
+            break;
+          }
+        }
+      }
+    }
+    
+    return JSON.stringify({
+      id: task.id(),
+      name: task.name(),
+      updated: true
+    });
+  } catch (error) {
+    return JSON.stringify({
+      error: true,
+      message: "Failed to update task: " + error.toString()
+    });
+  }
+`;
+
 export const UPDATE_TASK_SCRIPT = `
   const taskId = {{taskId}};
   const updates = {{updates}};

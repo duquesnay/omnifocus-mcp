@@ -1,16 +1,16 @@
 import { BaseTool } from '../base.js';
-import { UPDATE_PROJECT_SCRIPT } from '../../omnifocus/scripts/project-crud.js';
+import { UPDATE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class UpdateProjectTool extends BaseTool {
   name = 'update_project';
-  description = 'Update an existing project in OmniFocus';
+  description = 'Update an existing project in OmniFocus, including moving between folders';
   
   inputSchema = {
     type: 'object' as const,
     properties: {
-      projectName: {
+      projectId: {
         type: 'string',
-        description: 'Name of the project to update',
+        description: 'ID of the project to update',
       },
       updates: {
         type: 'object',
@@ -41,14 +41,18 @@ export class UpdateProjectTool extends BaseTool {
             enum: ['active', 'onHold', 'dropped', 'done'],
             description: 'Project status',
           },
+          folder: {
+            type: ['string', 'null'],
+            description: 'Move project to folder (null to move to root)',
+          },
         },
       },
     },
-    required: ['projectName', 'updates'],
+    required: ['projectId', 'updates'],
   };
 
   async execute(args: { 
-    projectName: string;
+    projectId: string;
     updates: {
       name?: string;
       note?: string | null;
@@ -56,17 +60,18 @@ export class UpdateProjectTool extends BaseTool {
       dueDate?: string | null;
       flagged?: boolean;
       status?: string;
+      folder?: string | null;
     };
   }): Promise<any> {
     try {
-      const { projectName, updates } = args;
+      const { projectId, updates } = args;
       
       // Clear project cache since we're updating
       this.cache.clear('projects');
       
       // Execute update script
       const script = this.omniAutomation.buildScript(UPDATE_PROJECT_SCRIPT, { 
-        projectName,
+        projectId,
         updates
       });
       const result = await this.omniAutomation.execute<any>(script);

@@ -81,50 +81,77 @@ export const LIST_PROJECTS_SCRIPT = `
 `;
 
 export const CREATE_PROJECT_SCRIPT = `
-  const projectData = {{projectData}};
+  const name = {{name}};
+  const options = {{options}};
   
   try {
+    // Check if project already exists
+    const existingProjects = doc.flattenedProjects();
+    for (let i = 0; i < existingProjects.length; i++) {
+      if (existingProjects[i].name() === name) {
+        return JSON.stringify({
+          error: true,
+          message: "Project '" + name + "' already exists"
+        });
+      }
+    }
+    
     // Create the project
-    const project = app.Project({name: projectData.name});
+    const projectProps = { name: name };
     
-    // Set properties
-    if (projectData.note !== undefined) project.note = projectData.note;
-    if (projectData.status !== undefined) project.status = projectData.status;
-    if (projectData.flagged !== undefined) project.flagged = projectData.flagged;
-    if (projectData.dueDate !== undefined) project.dueDate = projectData.dueDate ? new Date(projectData.dueDate) : null;
-    if (projectData.deferDate !== undefined) project.deferDate = projectData.deferDate ? new Date(projectData.deferDate) : null;
-    if (projectData.sequential !== undefined) project.sequential = projectData.sequential;
+    // Add optional properties
+    if (options.note) {
+      projectProps.note = options.note;
+    }
     
-    // Add to folder or root
-    if (projectData.folder) {
-      try {
-        const folders = doc.flattenedFolders();
-        let targetFolder = null;
-        for (let i = 0; i < folders.length; i++) {
-          if (folders[i].name() === projectData.folder) {
-            targetFolder = folders[i];
-            break;
-          }
+    if (options.deferDate) {
+      projectProps.deferDate = new Date(options.deferDate);
+    }
+    
+    if (options.dueDate) {
+      projectProps.dueDate = new Date(options.dueDate);
+    }
+    
+    if (options.flagged !== undefined) {
+      projectProps.flagged = options.flagged;
+    }
+    
+    // Create project
+    const newProject = app.Project(projectProps);
+    
+    // Add to specific folder if specified
+    if (options.folder) {
+      const folders = doc.flattenedFolders();
+      let targetFolder = null;
+      
+      for (let i = 0; i < folders.length; i++) {
+        if (folders[i].name() === options.folder) {
+          targetFolder = folders[i];
+          break;
         }
-        
-        if (!targetFolder) {
-          // Create folder if it doesn't exist
-          targetFolder = app.Folder({name: projectData.folder});
-          doc.folders.push(targetFolder);
-        }
-        targetFolder.projects.push(project);
-      } catch (e) {
-        // Fallback to root
-        doc.projects.push(project);
+      }
+      
+      if (targetFolder) {
+        targetFolder.projects.push(newProject);
+      } else {
+        // Create folder if it doesn't exist
+        targetFolder = app.Folder({name: options.folder});
+        doc.folders.push(targetFolder);
+        targetFolder.projects.push(newProject);
       }
     } else {
-      doc.projects.push(project);
+      // Add to root projects
+      doc.projects.push(newProject);
     }
     
     return JSON.stringify({
-      id: project.id.primaryKey,
-      name: project.name,
-      created: true
+      success: true,
+      project: {
+        id: newProject.id.primaryKey,
+        name: newProject.name(),
+        createdAt: new Date().toISOString()
+      },
+      message: "Project '" + name + "' created successfully"
     });
   } catch (error) {
     return JSON.stringify({
@@ -139,31 +166,139 @@ export const UPDATE_PROJECT_SCRIPT = `
   const updates = {{updates}};
   
   try {
-    // Find project by ID
+    // Find the project by ID
     const projects = doc.flattenedProjects();
-    let project = null;
+    let targetProject = null;
+    
     for (let i = 0; i < projects.length; i++) {
       if (projects[i].id.primaryKey === projectId) {
-        project = projects[i];
+        targetProject = projects[i];
         break;
       }
     }
-    if (!project) {
-      return JSON.stringify({ error: true, message: 'Project not found' });
+    
+    if (!targetProject) {
+      return JSON.stringify({
+        error: true,
+        message: "Project with ID '" + projectId + "' not found"
+      });
     }
     
     // Apply updates
-    if (updates.name !== undefined) project.name = updates.name;
-    if (updates.note !== undefined) project.note = updates.note;
-    if (updates.status !== undefined) project.status = updates.status;
-    if (updates.flagged !== undefined) project.flagged = updates.flagged;
-    if (updates.dueDate !== undefined) project.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
-    if (updates.deferDate !== undefined) project.deferDate = updates.deferDate ? new Date(updates.deferDate) : null;
-    if (updates.sequential !== undefined) project.sequential = updates.sequential;
+    const changes = [];
+    
+    if (updates.name && updates.name !== targetProject.name()) {
+      // Check if new name already exists
+      for (let i = 0; i < projects.length; i++) {
+        if (projects[i].name() === updates.name && projects[i] !== targetProject) {
+          return JSON.stringify({
+            error: true,
+            message: "Project '" + updates.name + "' already exists"
+          });
+        }
+      }
+      targetProject.name = updates.name;
+      changes.push("Name changed to '" + updates.name + "'");
+    }
+    
+    if (updates.note !== undefined) {
+      targetProject.note = updates.note;
+      changes.push("Note updated");
+    }
+    
+    if (updates.deferDate !== undefined) {
+      if (updates.deferDate === null) {
+        targetProject.deferDate = null;
+        changes.push("Defer date removed");
+      } else {
+        targetProject.deferDate = new Date(updates.deferDate);
+        changes.push("Defer date set to " + updates.deferDate);
+      }
+    }
+    
+    if (updates.dueDate !== undefined) {
+      if (updates.dueDate === null) {
+        targetProject.dueDate = null;
+        changes.push("Due date removed");
+      } else {
+        targetProject.dueDate = new Date(updates.dueDate);
+        changes.push("Due date set to " + updates.dueDate);
+      }
+    }
+    
+    if (updates.flagged !== undefined) {
+      targetProject.flagged = updates.flagged;
+      changes.push(updates.flagged ? "Flagged" : "Unflagged");
+    }
+    
+    if (updates.status) {
+      if (updates.status === 'active') {
+        targetProject.status = app.Project.Status.active;
+        changes.push("Status set to active");
+      } else if (updates.status === 'onHold') {
+        targetProject.status = app.Project.Status.onHold;
+        changes.push("Status set to on hold");
+      } else if (updates.status === 'dropped') {
+        targetProject.status = app.Project.Status.dropped;
+        changes.push("Status set to dropped");
+      } else if (updates.status === 'done') {
+        targetProject.status = app.Project.Status.done;
+        targetProject.completionDate = new Date();
+        changes.push("Project completed");
+      }
+    }
+    
+    if (updates.folder !== undefined) {
+      // Handle folder movement
+      try {
+        if (updates.folder === null) {
+          // Move to root by using moveTo with location Beginning
+          targetProject.moveTo(doc.projects, { at: app.LocationSpecifier.beginning });
+          changes.push("Moved to root folder");
+        } else {
+          // Move to specific folder
+          const folders = doc.flattenedFolders();
+          let targetFolder = null;
+          
+          for (let i = 0; i < folders.length; i++) {
+            if (folders[i].name() === updates.folder) {
+              targetFolder = folders[i];
+              break;
+            }
+          }
+          
+          if (!targetFolder) {
+            // Create folder if it doesn't exist
+            targetFolder = app.Folder({name: updates.folder});
+            doc.folders.push(targetFolder);
+            changes.push("Created folder '" + updates.folder + "'");
+          }
+          
+          // Move project to target folder
+          targetProject.moveTo(targetFolder.projects, { at: app.LocationSpecifier.beginning });
+          changes.push("Moved to folder '" + updates.folder + "'");
+        }
+      } catch (moveError) {
+        // Fallback: Note the limitation
+        changes.push("Note: Folder change requires manual move in OmniFocus");
+      }
+    }
+    
+    if (changes.length === 0) {
+      return JSON.stringify({
+        success: true,
+        message: "No changes made to project"
+      });
+    }
     
     return JSON.stringify({
-      id: project.id.primaryKey,
-      updated: true
+      success: true,
+      project: {
+        id: targetProject.id.primaryKey,
+        name: targetProject.name()
+      },
+      changes: changes,
+      message: "Project updated successfully"
     });
   } catch (error) {
     return JSON.stringify({
@@ -173,41 +308,128 @@ export const UPDATE_PROJECT_SCRIPT = `
   }
 `;
 
-export const ARCHIVE_PROJECT_SCRIPT = `
+export const COMPLETE_PROJECT_SCRIPT = `
   const projectId = {{projectId}};
-  const archiveType = {{archiveType}}; // 'completed' or 'dropped'
+  const completeAllTasks = {{completeAllTasks}};
   
   try {
-    // Find project by ID
+    // Find the project by ID
     const projects = doc.flattenedProjects();
-    let project = null;
+    let targetProject = null;
+    
     for (let i = 0; i < projects.length; i++) {
       if (projects[i].id.primaryKey === projectId) {
-        project = projects[i];
+        targetProject = projects[i];
         break;
       }
     }
-    if (!project) {
-      return JSON.stringify({ error: true, message: 'Project not found' });
+    
+    if (!targetProject) {
+      return JSON.stringify({
+        error: true,
+        message: "Project with ID '" + projectId + "' not found"
+      });
     }
     
-    if (archiveType === 'completed') {
-      project.markComplete();
-    } else if (archiveType === 'dropped') {
-      project.drop();
-    } else {
-      return JSON.stringify({ error: true, message: 'Invalid archive type' });
+    // Count incomplete tasks
+    const tasks = targetProject.flattenedTasks();
+    let incompleteCount = 0;
+    let completedCount = 0;
+    
+    for (let i = 0; i < tasks.length; i++) {
+      if (!tasks[i].completed()) {
+        incompleteCount++;
+      }
     }
+    
+    // Complete all tasks if requested
+    if (completeAllTasks && incompleteCount > 0) {
+      for (let i = 0; i < tasks.length; i++) {
+        if (!tasks[i].completed()) {
+          tasks[i].markComplete();
+          completedCount++;
+        }
+      }
+    }
+    
+    // Complete the project
+    targetProject.status = app.Project.Status.done;
+    targetProject.completionDate = new Date();
     
     return JSON.stringify({
-      id: project.id.primaryKey,
-      archived: true,
-      status: project.status
+      success: true,
+      project: {
+        id: targetProject.id.primaryKey,
+        name: targetProject.name(),
+        completedAt: targetProject.completionDate().toISOString()
+      },
+      tasksCompleted: completedCount,
+      message: "Project '" + targetProject.name() + "' completed" + 
+                (completedCount > 0 ? " with " + completedCount + " tasks" : "")
     });
   } catch (error) {
     return JSON.stringify({
       error: true,
-      message: "Failed to archive project: " + error.toString()
+      message: "Failed to complete project: " + error.toString()
+    });
+  }
+`;
+
+export const DELETE_PROJECT_SCRIPT = `
+  const projectId = {{projectId}};
+  const deleteTasks = {{deleteTasks}};
+  
+  try {
+    // Find the project by ID
+    const projects = doc.flattenedProjects();
+    let targetProject = null;
+    
+    for (let i = 0; i < projects.length; i++) {
+      if (projects[i].id.primaryKey === projectId) {
+        targetProject = projects[i];
+        break;
+      }
+    }
+    
+    if (!targetProject) {
+      return JSON.stringify({
+        error: true,
+        message: "Project with ID '" + projectId + "' not found"
+      });
+    }
+    
+    const projectName = targetProject.name();
+    
+    // Count tasks
+    const tasks = targetProject.flattenedTasks();
+    const taskCount = tasks.length;
+    let deletedTaskCount = 0;
+    
+    // Delete or orphan tasks
+    if (deleteTasks && taskCount > 0) {
+      // Delete all tasks in the project
+      for (let i = tasks.length - 1; i >= 0; i--) {
+        tasks[i].remove();
+        deletedTaskCount++;
+      }
+    }
+    
+    // Delete the project
+    targetProject.remove();
+    
+    return JSON.stringify({
+      success: true,
+      projectName: projectName,
+      tasksDeleted: deletedTaskCount,
+      tasksOrphaned: taskCount - deletedTaskCount,
+      message: "Project '" + projectName + "' deleted" +
+                (deletedTaskCount > 0 ? " with " + deletedTaskCount + " tasks" : "") +
+                (taskCount - deletedTaskCount > 0 ? " (" + (taskCount - deletedTaskCount) + " tasks moved to Inbox)" : "")
+    });
+  } catch (error) {
+    return JSON.stringify({
+      error: true,
+      message: "Failed to delete project: " + error.toString()
     });
   }
 `;

@@ -1,9 +1,9 @@
 import { BaseTool } from '../base.js';
-import { CREATE_PROJECT_SCRIPT } from '../../omnifocus/scripts/project-crud.js';
+import { CREATE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class CreateProjectTool extends BaseTool {
   name = 'create_project';
-  description = 'Create a new project in OmniFocus';
+  description = 'Create a new project in OmniFocus with optional folder placement (creates folder if needed)';
   
   inputSchema = {
     type: 'object' as const,
@@ -28,9 +28,9 @@ export class CreateProjectTool extends BaseTool {
         type: 'boolean',
         description: 'Whether the project is flagged',
       },
-      parentFolder: {
+      folder: {
         type: 'string',
-        description: 'Name of parent folder (optional)',
+        description: 'Name of folder to place project in (creates it if it doesn\'t exist)',
       },
     },
     required: ['name'],
@@ -42,7 +42,7 @@ export class CreateProjectTool extends BaseTool {
     deferDate?: string;
     dueDate?: string;
     flagged?: boolean;
-    parentFolder?: string;
+    folder?: string;
   }): Promise<any> {
     try {
       const { name, ...options } = args;

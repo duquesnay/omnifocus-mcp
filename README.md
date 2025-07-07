@@ -37,6 +37,14 @@ A professional Model Context Protocol (MCP) server for OmniFocus that provides a
 - `list_projects` - List and filter projects with caching
   - Filter by: status (active, on hold, dropped, completed), flags, folder
   - Results cached for 5 minutes
+- `create_project` - Create new projects with folder support
+  - Automatically creates folders if they don't exist
+  - Set name, note, dates, flags, and parent folder
+- `update_project` - Update project properties
+  - Change name, note, status, dates, flags
+  - Folder movement supported with limitations (JXA constraint)
+- `complete_project` - Mark projects as done
+- `delete_project` - Remove projects from OmniFocus
 
 ### Coming Soon
 - Analytics tools (productivity stats, velocity tracking, overdue analysis)
@@ -111,17 +119,39 @@ Add to your Claude Desktop configuration file (`~/Library/Application Support/Cl
 }
 ```
 
-### Create a New Task
+### Create a New Task with Project Assignment
 ```typescript
+// First, find the project ID
+{
+  "tool": "list_projects",
+  "arguments": {
+    "search": "Budget Planning"
+  }
+}
+// Returns: { "projects": [{ "id": "jH8x2mKl9pQ", "name": "Budget Planning 2024", ... }] }
+
+// Then create the task in that project
 {
   "tool": "create_task",
   "arguments": {
     "name": "Review Q4 budget",
-    "projectId": "project-id-here",
+    "projectId": "jH8x2mKl9pQ",  // Use the ID from list_projects
     "dueDate": "2024-01-15T17:00:00Z",
     "flagged": true,
     "tags": ["finance", "urgent"],
     "estimatedMinutes": 30
+  }
+}
+```
+
+### Move a Task Between Projects
+```typescript
+// Move an existing task to a different project
+{
+  "tool": "update_task",
+  "arguments": {
+    "taskId": "abc123xyz",
+    "projectId": "newProjectId"  // Or null to move to inbox
   }
 }
 ```
@@ -145,6 +175,44 @@ Add to your Claude Desktop configuration file (`~/Library/Application Support/Cl
   "arguments": {
     "status": ["active"],
     "flagged": true
+  }
+}
+```
+
+### Create a Project with Folder
+```typescript
+{
+  "tool": "create_project",
+  "arguments": {
+    "name": "New Website Launch",
+    "note": "Complete redesign and launch",
+    "folder": "Work Projects",  // Creates folder if it doesn't exist
+    "dueDate": "2024-03-31T17:00:00Z",
+    "flagged": true
+  }
+}
+```
+
+### Update Project (Including Folder)
+```typescript
+// First, get the project ID from list_projects
+{
+  "tool": "list_projects",
+  "arguments": {
+    "search": "Website Launch"
+  }
+}
+
+// Then update using the project ID
+{
+  "tool": "update_project",
+  "arguments": {
+    "projectId": "jH8x2mKl9pQ",  // Use the ID from list_projects
+    "updates": {
+      "folder": "Archive",  // Note: Folder movement has JXA limitations
+      "status": "onHold",
+      "note": "Postponed until Q2"
+    }
   }
 }
 ```

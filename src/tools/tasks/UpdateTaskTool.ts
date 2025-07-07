@@ -1,10 +1,10 @@
 import { BaseTool } from '../base.js';
 import { TaskUpdate } from '../../omnifocus/types.js';
-import { UPDATE_TASK_SCRIPT } from '../../omnifocus/scripts/tasks.js';
+import { UPDATE_TASK_SCRIPT_SIMPLE } from '../../omnifocus/scripts/tasks.js';
 
 export class UpdateTaskTool extends BaseTool {
   name = 'update_task';
-  description = 'Update an existing task in OmniFocus';
+  description = 'Update an existing task in OmniFocus (can move between projects using projectId)';
   
   inputSchema = {
     type: 'object' as const,
@@ -46,7 +46,7 @@ export class UpdateTaskTool extends BaseTool {
       },
       projectId: {
         type: ['string', 'null'],
-        description: 'New project ID (null to move to inbox)',
+        description: 'Move task to different project - use ID from list_projects tool (null to move to inbox)',
       },
     },
     required: ['taskId'],
@@ -56,12 +56,20 @@ export class UpdateTaskTool extends BaseTool {
     try {
       const { taskId, ...updates } = args;
       
-      // Invalidate task cache on update
-      this.cache.invalidate('tasks');
+      // Temporarily disable cache invalidation to test freeze issue
+      // this.cache.invalidate('tasks');
       
-      const script = this.omniAutomation.buildScript(UPDATE_TASK_SCRIPT, { 
+      // Filter updates to only include what the simplified script can handle
+      const safeUpdates = {
+        ...(updates.name !== undefined && { name: updates.name }),
+        ...(updates.note !== undefined && { note: updates.note }),
+        ...(updates.flagged !== undefined && { flagged: updates.flagged }),
+        ...(updates.projectId !== undefined && { projectId: updates.projectId })
+      };
+      
+      const script = this.omniAutomation.buildScript(UPDATE_TASK_SCRIPT_SIMPLE, { 
         taskId,
-        updates,
+        updates: safeUpdates,
       });
       
       const result = await this.omniAutomation.execute(script);
@@ -70,11 +78,24 @@ export class UpdateTaskTool extends BaseTool {
         return result;
       }
       
-      this.logger.info(`Updated task: ${taskId}`);
+      // Temporarily disable logging to test freeze issue
+      // this.logger.info(`Updated task: ${taskId}`);
+      
+      // Parse the JSON result since the script returns a JSON string
+      let parsedResult;
+      try {
+        parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
+      } catch (parseError) {
+        this.logger.error(`Failed to parse update task result: ${result}`);
+        return {
+          error: true,
+          message: 'Failed to parse task update response'
+        };
+      }
       
       return {
         success: true,
-        task: result,
+        task: parsedResult,
       };
     } catch (error) {
       return this.handleError(error);

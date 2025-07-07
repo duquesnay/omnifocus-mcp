@@ -1,5 +1,5 @@
 import { BaseTool } from '../base.js';
-import { DELETE_PROJECT_SCRIPT } from '../../omnifocus/scripts/project-crud.js';
+import { DELETE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class DeleteProjectTool extends BaseTool {
   name = 'delete_project';
@@ -8,9 +8,9 @@ export class DeleteProjectTool extends BaseTool {
   inputSchema = {
     type: 'object' as const,
     properties: {
-      projectName: {
+      projectId: {
         type: 'string',
-        description: 'Name of the project to delete',
+        description: 'ID of the project to delete',
       },
       deleteTasks: {
         type: 'boolean',
@@ -18,22 +18,22 @@ export class DeleteProjectTool extends BaseTool {
         default: false,
       },
     },
-    required: ['projectName'],
+    required: ['projectId'],
   };
 
   async execute(args: { 
-    projectName: string;
+    projectId: string;
     deleteTasks?: boolean;
   }): Promise<any> {
     try {
-      const { projectName, deleteTasks = false } = args;
+      const { projectId, deleteTasks = false } = args;
       
       // Clear project cache since we're deleting
       this.cache.clear('projects');
       
       // Execute delete script
       const script = this.omniAutomation.buildScript(DELETE_PROJECT_SCRIPT, { 
-        projectName,
+        projectId,
         deleteTasks
       });
       const result = await this.omniAutomation.execute<any>(script);

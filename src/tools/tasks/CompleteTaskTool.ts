@@ -37,9 +37,22 @@ export class CompleteTaskTool extends BaseTool {
         }
         
         this.logger.info(`Completed task via JXA: ${args.taskId}`);
+        
+        // Parse the JSON result since the script returns a JSON string
+        let parsedResult;
+        try {
+          parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
+        } catch (parseError) {
+          this.logger.error(`Failed to parse complete task result: ${result}`);
+          return {
+            error: true,
+            message: 'Failed to parse task completion response'
+          };
+        }
+        
         return {
           success: true,
-          task: result,
+          task: parsedResult,
         };
       } catch (jxaError: any) {
         // If JXA fails with permission error, use URL scheme

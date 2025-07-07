@@ -3,7 +3,7 @@ import { CREATE_TASK_SCRIPT } from '../../omnifocus/scripts/tasks.js';
 
 export class CreateTaskTool extends BaseTool {
   name = 'create_task';
-  description = 'Create a new task in OmniFocus';
+  description = 'Create a new task in OmniFocus (can be assigned to a project using projectId from list_projects)';
   
   inputSchema = {
     type: 'object' as const,
@@ -18,7 +18,7 @@ export class CreateTaskTool extends BaseTool {
       },
       projectId: {
         type: 'string',
-        description: 'Project ID to add task to (if not provided, task goes to inbox)',
+        description: 'Project ID to add task to - get this from list_projects tool (if not provided, task goes to inbox)',
       },
       flagged: {
         type: 'boolean',
@@ -60,8 +60,16 @@ export class CreateTaskTool extends BaseTool {
         return result;
       }
       
-      // Return the result directly as it already has the correct format
-      return result;
+      // Parse the JSON result since the script returns a JSON string
+      try {
+        return typeof result === 'string' ? JSON.parse(result) : result;
+      } catch (parseError) {
+        this.logger.error(`Failed to parse create task result: ${result}`);
+        return {
+          error: true,
+          message: 'Failed to parse task creation response'
+        };
+      }
     } catch (error) {
       return this.handleError(error);
     }

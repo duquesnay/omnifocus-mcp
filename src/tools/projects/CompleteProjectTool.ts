@@ -1,5 +1,5 @@
 import { BaseTool } from '../base.js';
-import { COMPLETE_PROJECT_SCRIPT } from '../../omnifocus/scripts/project-crud.js';
+import { COMPLETE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class CompleteProjectTool extends BaseTool {
   name = 'complete_project';
@@ -8,9 +8,9 @@ export class CompleteProjectTool extends BaseTool {
   inputSchema = {
     type: 'object' as const,
     properties: {
-      projectName: {
+      projectId: {
         type: 'string',
-        description: 'Name of the project to complete',
+        description: 'ID of the project to complete',
       },
       completeAllTasks: {
         type: 'boolean',
@@ -18,22 +18,22 @@ export class CompleteProjectTool extends BaseTool {
         default: false,
       },
     },
-    required: ['projectName'],
+    required: ['projectId'],
   };
 
   async execute(args: { 
-    projectName: string;
+    projectId: string;
     completeAllTasks?: boolean;
   }): Promise<any> {
     try {
-      const { projectName, completeAllTasks = false } = args;
+      const { projectId, completeAllTasks = false } = args;
       
       // Clear project cache since we're completing
       this.cache.clear('projects');
       
       // Execute complete script
       const script = this.omniAutomation.buildScript(COMPLETE_PROJECT_SCRIPT, { 
-        projectName,
+        projectId,
         completeAllTasks
       });
       const result = await this.omniAutomation.execute<any>(script);
