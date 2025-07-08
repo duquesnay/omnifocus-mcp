@@ -17,7 +17,7 @@ export const ANALYZE_RECURRING_TASKS_SCRIPT = `
       if (options.activeOnly && task.completed()) continue;
       
       const taskInfo = {
-        id: task.id.primaryKey,
+        id: task.id(),
         name: task.name(),
         repetitionRule: {
           method: repetitionRule.method,
@@ -32,7 +32,7 @@ export const ANALYZE_RECURRING_TASKS_SCRIPT = `
         const project = task.containingProject();
         if (project) {
           taskInfo.project = project.name();
-          taskInfo.projectId = project.id.primaryKey;
+          taskInfo.projectId = project.id();
         }
       } catch (e) {}
       

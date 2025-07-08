@@ -14,7 +14,7 @@ export const LIST_TAGS_SCRIPT = `
       try {
         const taskTags = task.tags();
         for (let j = 0; j < taskTags.length; j++) {
-          const tagId = taskTags[j].id.primaryKey;
+          const tagId = taskTags[j].id();
           if (!tagUsage[tagId]) {
             tagUsage[tagId] = {
               total: 0,
@@ -35,7 +35,7 @@ export const LIST_TAGS_SCRIPT = `
     // Build tag list
     for (let i = 0; i < allTags.length; i++) {
       const tag = allTags[i];
-      const tagId = tag.id.primaryKey;
+      const tagId = tag.id();
       const usage = tagUsage[tagId] || { total: 0, active: 0, completed: 0 };
       
       // Skip empty tags if requested
@@ -52,7 +52,7 @@ export const LIST_TAGS_SCRIPT = `
       try {
         const parent = tag.parent();
         if (parent) {
-          tagInfo.parentId = parent.id.primaryKey;
+          tagInfo.parentId = parent.id();
           tagInfo.parentName = parent.name();
         }
       } catch (e) {}
@@ -200,7 +200,7 @@ export const MANAGE_TAGS_SCRIPT = `
           try {
             const taskTags = tasks[i].tags();
             for (let j = 0; j < taskTags.length; j++) {
-              if (taskTags[j].id.primaryKey === tagToDelete.id.primaryKey) {
+              if (taskTags[j].id() === tagToDelete.id()) {
                 taskCount++;
                 break;
               }
@@ -259,10 +259,10 @@ export const MANAGE_TAGS_SCRIPT = `
             let hasTargetTag = false;
             
             for (let j = 0; j < taskTags.length; j++) {
-              if (taskTags[j].id.primaryKey === sourceTag.id.primaryKey) {
+              if (taskTags[j].id() === sourceTag.id()) {
                 hasSourceTag = true;
               }
-              if (taskTags[j].id.primaryKey === targetTagObj.id.primaryKey) {
+              if (taskTags[j].id() === targetTagObj.id()) {
                 hasTargetTag = true;
               }
             }

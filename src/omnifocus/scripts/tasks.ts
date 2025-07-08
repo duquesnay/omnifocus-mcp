@@ -33,7 +33,7 @@ export const LIST_TASKS_SCRIPT = `
         try {
           const project = task.containingProject();
           if (filter.projectId === null && project !== null) continue;
-          if (filter.projectId !== null && (!project || project.id.primaryKey !== filter.projectId)) continue;
+          if (filter.projectId !== null && (!project || project.id() !== filter.projectId)) continue;
         } catch (e) {
           continue;
         }
@@ -103,7 +103,7 @@ export const LIST_TASKS_SCRIPT = `
         const project = task.containingProject();
         if (project) {
           taskObj.project = project.name();
-          taskObj.projectId = project.id.primaryKey;
+          taskObj.projectId = project.id();
         }
       } catch (e) {}
       
@@ -158,7 +158,7 @@ export const LIST_TASKS_SCRIPT = `
         try {
           const project = task.containingProject();
           if (filter.projectId === null && project !== null) continue;
-          if (filter.projectId !== null && (!project || project.id.primaryKey !== filter.projectId)) continue;
+          if (filter.projectId !== null && (!project || project.id() !== filter.projectId)) continue;
         } catch (e) {
           continue;
         }
@@ -365,11 +365,27 @@ export const UPDATE_TASK_SCRIPT_SIMPLE = `
       } else {
         // Find and assign project by ID
         const projects = doc.flattenedProjects();
+        let projectFound = false;
         for (let i = 0; i < projects.length; i++) {
-          if (projects[i].id.primaryKey === updates.projectId) {
+          if (projects[i].id() === updates.projectId) {
             task.assignedContainer = projects[i];
+            projectFound = true;
             break;
           }
+        }
+        if (!projectFound) {
+          // Check if this looks like Claude Desktop extracted a number from an alphanumeric ID
+          const isNumericOnly = /^\d+$/.test(updates.projectId);
+          let errorMessage = "Project with ID '" + updates.projectId + "' not found";
+          
+          if (isNumericOnly) {
+            errorMessage += ". CLAUDE DESKTOP BUG DETECTED: Claude Desktop may have extracted numbers from an alphanumeric project ID (e.g., '547' from 'az5Ieo4ip7K'). Please use the list_projects tool to get the correct full project ID and try again.";
+          }
+          
+          return JSON.stringify({
+            error: true,
+            message: errorMessage
+          });
         }
       }
     }
@@ -427,11 +443,27 @@ export const UPDATE_TASK_SCRIPT = `
       } else {
         // Find and assign project
         const projects = doc.flattenedProjects();
+        let projectFound = false;
         for (let i = 0; i < projects.length; i++) {
-          if (projects[i].id.primaryKey === updates.projectId) {
+          if (projects[i].id() === updates.projectId) {
             task.assignedContainer = projects[i];
+            projectFound = true;
             break;
           }
+        }
+        if (!projectFound) {
+          // Check if this looks like Claude Desktop extracted a number from an alphanumeric ID
+          const isNumericOnly = /^\d+$/.test(updates.projectId);
+          let errorMessage = "Project with ID '" + updates.projectId + "' not found";
+          
+          if (isNumericOnly) {
+            errorMessage += ". CLAUDE DESKTOP BUG DETECTED: Claude Desktop may have extracted numbers from an alphanumeric project ID (e.g., '547' from 'az5Ieo4ip7K'). Please use the list_projects tool to get the correct full project ID and try again.";
+          }
+          
+          return JSON.stringify({
+            error: true,
+            message: errorMessage
+          });
         }
       }
     }
@@ -536,7 +568,7 @@ export const COMPLETE_TASK_OMNI_SCRIPT = `
     let targetTask = null;
     
     tasks.forEach(task => {
-      if (task.id.primaryKey === taskId) {
+      if (task.id() === taskId) {
         targetTask = task;
       }
     });
@@ -605,7 +637,7 @@ export const DELETE_TASK_OMNI_SCRIPT = `
     let targetTask = null;
     
     tasks.forEach(task => {
-      if (task.id.primaryKey === taskId) {
+      if (task.id() === taskId) {
         targetTask = task;
       }
     });
@@ -703,7 +735,7 @@ export const TODAYS_AGENDA_SCRIPT = `
           const project = task.containingProject();
           if (project) {
             taskObj.project = project.name();
-            taskObj.projectId = project.id.primaryKey;
+            taskObj.projectId = project.id();
           }
         } catch (e) {}
         
@@ -776,7 +808,7 @@ export const GET_TASK_COUNT_SCRIPT = `
         try {
           const project = task.containingProject();
           if (filter.projectId === null && project !== null) continue;
-          if (filter.projectId !== null && (!project || project.id.primaryKey !== filter.projectId)) continue;
+          if (filter.projectId !== null && (!project || project.id() !== filter.projectId)) continue;
         } catch (e) {
           continue;
         }

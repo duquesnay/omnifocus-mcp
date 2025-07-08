@@ -46,7 +46,7 @@ export class UpdateTaskTool extends BaseTool {
       },
       projectId: {
         type: ['string', 'null'],
-        description: 'Move task to different project - use projectId from list_tasks tool or get from list_projects (null to move to inbox - may have JXA limitations)',
+        description: 'Move task to different project - use full alphanumeric projectId from list_projects tool (e.g., "az5Ieo4ip7K", not just "547"). Claude Desktop may incorrectly extract numbers from IDs - use the complete ID string (null to move to inbox).',
       },
     },
     required: ['taskId'],

@@ -4,7 +4,7 @@
 export const FIXED_TASK_FORMATTING = `
       // Format task object - INCLUDING ID!
       const taskObj = {
-        id: task.id.primaryKey,  // ADD THIS LINE - Include the OmniFocus ID
+        id: task.id(),  // ADD THIS LINE - Include the OmniFocus ID
         name: task.name(),
         completed: task.completed(),
         flagged: task.flagged(),
@@ -42,9 +42,9 @@ export const CREATE_TASK_FIX = `
     if (createdTask) {
       return JSON.stringify({
         success: true,
-        taskId: createdTask.id.primaryKey,  // Return the real OmniFocus ID
+        taskId: createdTask.id(),  // Return the real OmniFocus ID
         task: {
-          id: createdTask.id.primaryKey,
+          id: createdTask.id(),
           name: createdTask.name(),
           flagged: createdTask.flagged() || false,
           inInbox: true
@@ -84,7 +84,7 @@ export const LIST_TAGS_FIX = `
       
       // Get basic tag info
       const tagInfo = {
-        id: tag.id.primaryKey,
+        id: tag.id(),
         name: tag.name()
       };
       
@@ -155,7 +155,7 @@ export const EXPORT_TASKS_FIX = `
       // Build task object with requested fields only
       const taskObj = {};
       
-      if (fields.includes('id')) taskObj.id = task.id.primaryKey;
+      if (fields.includes('id')) taskObj.id = task.id();
       if (fields.includes('name')) taskObj.name = task.name();
       if (fields.includes('project')) {
         try {

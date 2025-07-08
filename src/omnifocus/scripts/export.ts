@@ -27,6 +27,15 @@ export const EXPORT_TASKS_SCRIPT = `
         }
       }
       
+      if (filter.projectId) {
+        try {
+          const project = task.containingProject();
+          if (!project || project.id() !== filter.projectId) continue;
+        } catch (e) {
+          continue;
+        }
+      }
+      
       if (filter.tags && filter.tags.length > 0) {
         try {
           const taskTags = task.tags().map(t => t.name());
@@ -52,7 +61,7 @@ export const EXPORT_TASKS_SCRIPT = `
       const taskData = {};
       
       if (allFields.includes('id')) {
-        taskData.id = task.id.primaryKey;
+        taskData.id = task.id();
       }
       
       if (allFields.includes('name')) {
@@ -69,7 +78,7 @@ export const EXPORT_TASKS_SCRIPT = `
           const project = task.containingProject();
           if (project) {
             taskData.project = project.name();
-            taskData.projectId = project.id.primaryKey;
+            taskData.projectId = project.id();
           }
         } catch (e) {}
       }
@@ -179,7 +188,7 @@ export const EXPORT_PROJECTS_SCRIPT = `
       const project = allProjects[i];
       
       const projectData = {
-        id: project.id.primaryKey,
+        id: project.id(),
         name: project.name(),
         status: project.status ? project.status.name : 'active'
       };
@@ -192,7 +201,7 @@ export const EXPORT_PROJECTS_SCRIPT = `
       try {
         const parent = project.parentFolder();
         if (parent) {
-          projectData.parentId = parent.id.primaryKey;
+          projectData.parentId = parent.id();
           projectData.parentName = parent.name();
         }
       } catch (e) {}

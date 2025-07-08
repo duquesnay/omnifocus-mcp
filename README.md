@@ -217,6 +217,42 @@ Add to your Claude Desktop configuration file (`~/Library/Application Support/Cl
 }
 ```
 
+## Troubleshooting
+
+### "Project not found" Errors with Numeric IDs
+
+If you see errors like `Project with ID '547' not found` followed by a Claude Desktop bug warning:
+
+1. **Use list_projects** to get the correct full project ID:
+   ```typescript
+   {
+     "tool": "list_projects",
+     "arguments": {
+       "search": "your project name"
+     }
+   }
+   ```
+
+2. **Copy the full alphanumeric ID** (e.g., `"az5Ieo4ip7K"`) from the results
+
+3. **Use project names as an alternative**:
+   ```typescript
+   {
+     "tool": "update_task", 
+     "arguments": {
+       "taskId": "your-task-id",
+       "projectId": null  // Move to inbox first
+     }
+   }
+   ```
+   Then manually assign in OmniFocus, or use project names in search filters instead.
+
+### Task Update Failures
+
+- Always get task IDs from `list_tasks` rather than guessing
+- Use `list_projects` to verify project IDs before assignment
+- Check that tasks exist and aren't in the trash
+
 ## Architecture
 
 ### Cache Strategy
@@ -352,6 +388,24 @@ node tests/integration/test-as-claude-desktop.js
 ```
 
 ## Technical Notes
+
+### Claude Desktop ID Parsing Bug
+
+**CRITICAL ISSUE**: Claude Desktop has a confirmed bug where it extracts numeric portions from alphanumeric project IDs when calling MCP tools.
+
+**Example**: When you provide project ID `"az5Ieo4ip7K"`, Claude Desktop may pass only `"547"` to the tool, causing "Project not found" errors.
+
+**Symptoms**:
+- Task updates fail with "Project not found" errors
+- Error messages show numeric IDs (like "547") instead of full alphanumeric IDs
+- Occurs even when full project IDs are provided in prompts
+
+**Mitigation**:
+- Our error messages now detect this pattern and provide helpful guidance
+- Tool descriptions warn about using full alphanumeric IDs
+- Consider using project names instead of IDs when this bug affects your workflow
+
+**Related Issues**: This is part of broader Claude Desktop parameter processing bugs documented in GitHub issues, including type conversion failures and JSON parsing errors.
 
 ### ES Modules Requirement
 

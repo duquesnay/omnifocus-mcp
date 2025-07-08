@@ -16,7 +16,7 @@ export const LIST_TAGS_SIMPLE = `
       
       // Get basic tag info
       const tagInfo = {
-        id: tag.id.primaryKey,
+        id: tag.id(),
         name: tag.name(),
         taskCount: 0,
         availableCount: 0
@@ -36,7 +36,7 @@ export const LIST_TAGS_SIMPLE = `
           try {
             const taskTags = task.tags();
             for (let k = 0; k < taskTags.length; k++) {
-              if (taskTags[k].id.primaryKey === tagInfo.id) {
+              if (taskTags[k].id() === tagInfo.id) {
                 hasTag = true;
                 break;
               }
@@ -114,7 +114,7 @@ export const CREATE_TAG_SIMPLE = `
       success: true,
       tag: {
         name: tagName,
-        id: newTag.id.primaryKey
+        id: newTag.id()
       }
     });
     

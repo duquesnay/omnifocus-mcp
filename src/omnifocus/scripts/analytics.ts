@@ -199,7 +199,7 @@ export const TASK_VELOCITY_SCRIPT = `
       if (options.projectId) {
         try {
           const project = task.containingProject();
-          if (!project || project.id.primaryKey !== options.projectId) continue;
+          if (!project || project.id() !== options.projectId) continue;
         } catch (e) {
           continue;
         }
@@ -371,7 +371,7 @@ export const OVERDUE_ANALYSIS_SCRIPT = `
           
           // Build task info
           const taskInfo = {
-            id: task.id.primaryKey,
+            id: task.id(),
             name: task.name(),
             dueDate: dueDate.toISOString(),
             overdueDays: overdueDays,
@@ -384,7 +384,7 @@ export const OVERDUE_ANALYSIS_SCRIPT = `
             const project = task.containingProject();
             if (project) {
               taskInfo.project = project.name();
-              taskInfo.projectId = project.id.primaryKey;
+              taskInfo.projectId = project.id();
             }
           } catch (e) {}
           

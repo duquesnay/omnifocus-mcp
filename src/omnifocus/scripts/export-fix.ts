@@ -70,7 +70,7 @@ export const EXPORT_TASKS_FIXED = `
         
         switch(field) {
           case 'id':
-            taskObj.id = task.id.primaryKey;
+            taskObj.id = task.id();
             break;
           case 'name':
             taskObj.name = task.name();
