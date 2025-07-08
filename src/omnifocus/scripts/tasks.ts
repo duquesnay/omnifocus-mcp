@@ -360,8 +360,8 @@ export const UPDATE_TASK_SCRIPT_SIMPLE = `
     // Handle project assignment (simplified version)
     if (updates.projectId !== undefined) {
       if (updates.projectId === null) {
-        // Move to inbox
-        task.assignedContainer = doc.inbox;
+        // Move to inbox - set assignedContainer to null which moves task to inbox
+        task.assignedContainer = null;
       } else {
         // Find and assign project by ID
         const projects = doc.flattenedProjects();
@@ -422,8 +422,8 @@ export const UPDATE_TASK_SCRIPT = `
     // Update project assignment
     if (updates.projectId !== undefined) {
       if (updates.projectId === null) {
-        // Move to inbox
-        task.assignedContainer = doc.inbox;
+        // Move to inbox - set assignedContainer to null
+        task.assignedContainer = null;
       } else {
         // Find and assign project
         const projects = doc.flattenedProjects();

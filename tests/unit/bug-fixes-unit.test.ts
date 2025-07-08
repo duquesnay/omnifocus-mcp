@@ -46,7 +46,7 @@ describe('Bug Fixes - Unit Tests', () => {
       
       // Should handle null case (move to inbox)
       expect(script).toContain('if (updates.projectId === null)');
-      expect(script).toContain('task.assignedContainer = doc.inbox');
+      expect(script).toContain('task.assignedContainer = null');
       
       // Should handle project assignment
       expect(script).toContain('const projects = doc.flattenedProjects()');
@@ -84,8 +84,8 @@ describe('Bug Fixes - Unit Tests', () => {
       // The simplified script tries to handle it but JXA has limitations
       const script = UPDATE_TASK_SCRIPT_SIMPLE;
       
-      // We attempt to handle it
-      expect(script).toContain('task.assignedContainer = doc.inbox');
+      // We fixed it by using null assignment
+      expect(script).toContain('task.assignedContainer = null');
       
       // But we should document that this is a JXA limitation
       // (In a real TDD scenario, we'd have a comment in the script or documentation)
