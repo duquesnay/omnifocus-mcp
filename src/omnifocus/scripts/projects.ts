@@ -33,7 +33,7 @@ export const LIST_PROJECTS_SCRIPT = `
       
       // Build project object
       const projectObj = {
-        id: project.id.primaryKey,
+        id: project.id(),
         name: project.name(),
         status: project.status(),
         flagged: project.flagged()
@@ -147,7 +147,7 @@ export const CREATE_PROJECT_SCRIPT = `
     return JSON.stringify({
       success: true,
       project: {
-        id: newProject.id.primaryKey,
+        id: newProject.id(),
         name: newProject.name(),
         createdAt: new Date().toISOString()
       },
@@ -171,7 +171,7 @@ export const UPDATE_PROJECT_SCRIPT = `
     let targetProject = null;
     
     for (let i = 0; i < projects.length; i++) {
-      if (projects[i].id.primaryKey === projectId) {
+      if (projects[i].id() === projectId) {
         targetProject = projects[i];
         break;
       }
@@ -294,7 +294,7 @@ export const UPDATE_PROJECT_SCRIPT = `
     return JSON.stringify({
       success: true,
       project: {
-        id: targetProject.id.primaryKey,
+        id: targetProject.id(),
         name: targetProject.name()
       },
       changes: changes,
@@ -318,7 +318,7 @@ export const COMPLETE_PROJECT_SCRIPT = `
     let targetProject = null;
     
     for (let i = 0; i < projects.length; i++) {
-      if (projects[i].id.primaryKey === projectId) {
+      if (projects[i].id() === projectId) {
         targetProject = projects[i];
         break;
       }
@@ -359,7 +359,7 @@ export const COMPLETE_PROJECT_SCRIPT = `
     return JSON.stringify({
       success: true,
       project: {
-        id: targetProject.id.primaryKey,
+        id: targetProject.id(),
         name: targetProject.name(),
         completedAt: targetProject.completionDate().toISOString()
       },
@@ -385,7 +385,7 @@ export const DELETE_PROJECT_SCRIPT = `
     let targetProject = null;
     
     for (let i = 0; i < projects.length; i++) {
-      if (projects[i].id.primaryKey === projectId) {
+      if (projects[i].id() === projectId) {
         targetProject = projects[i];
         break;
       }

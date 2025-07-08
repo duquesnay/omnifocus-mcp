@@ -46,7 +46,7 @@ export class UpdateTaskTool extends BaseTool {
       },
       projectId: {
         type: ['string', 'null'],
-        description: 'Move task to different project - use ID from list_projects tool (null to move to inbox)',
+        description: 'Move task to different project - use projectId from list_tasks tool or get from list_projects (null to move to inbox)',
       },
     },
     required: ['taskId'],
