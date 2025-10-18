@@ -3,12 +3,12 @@ export const LIST_TASKS_SCRIPT = `
   const tasks = [];
   
   try {
-    const allTasks = doc.flattenedTasks();
+    const allTasks = filter.inInbox === true ? doc.inboxTasks() : doc.flattenedTasks();
     const limit = Math.min(filter.limit || 100, 1000); // Cap at 1000
-    let count = 0;
+    let matches = 0;
     const startTime = Date.now();
     
-    for (let i = 0; i < allTasks.length && count < limit; i++) {
+    for (let i = 0; i < allTasks.length; i++) {
       const task = allTasks[i];
       
       // Skip if task doesn't match filters
@@ -84,6 +84,11 @@ export const LIST_TASKS_SCRIPT = `
         }
       }
       
+      matches++;
+      if (tasks.length >= limit) {
+        continue;
+      }
+      
       // Build task object with safe property access
       const taskObj = {
         id: task.id(),
@@ -125,100 +130,17 @@ export const LIST_TASKS_SCRIPT = `
       }
       
       tasks.push(taskObj);
-      count++;
     }
     
     const endTime = Date.now();
-    const totalFiltered = count; // Tasks that matched filters (including those beyond limit)
-    let totalAvailable = 0;
-    
-    // Quick count of total matching tasks
-    for (let i = 0; i < allTasks.length; i++) {
-      const task = allTasks[i];
-      
-      // Apply same filters as main loop
-      if (filter.completed !== undefined && task.completed() !== filter.completed) continue;
-      if (filter.flagged !== undefined && task.flagged() !== filter.flagged) continue;
-      if (filter.inInbox !== undefined && task.inInbox() !== filter.inInbox) continue;
-      
-      // Search filter
-      if (filter.search) {
-        try {
-          const name = task.name() || '';
-          const note = task.note() || '';
-          const searchText = (name + ' ' + note).toLowerCase();
-          if (!searchText.includes(filter.search.toLowerCase())) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      // Project filter
-      if (filter.projectId !== undefined) {
-        try {
-          const project = task.containingProject();
-          if (filter.projectId === null && project !== null) continue;
-          if (filter.projectId !== null && (!project || project.id() !== filter.projectId)) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      // Tags filter
-      if (filter.tags && filter.tags.length > 0) {
-        try {
-          const taskTags = task.tags().map(t => t.name());
-          const hasAllTags = filter.tags.every(tag => taskTags.includes(tag));
-          if (!hasAllTags) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      // Date filters
-      if (filter.dueBefore || filter.dueAfter) {
-        try {
-          const dueDate = task.dueDate();
-          if (!dueDate && (filter.dueBefore || filter.dueAfter)) continue;
-          if (filter.dueBefore && dueDate > new Date(filter.dueBefore)) continue;
-          if (filter.dueAfter && dueDate < new Date(filter.dueAfter)) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      if (filter.deferBefore || filter.deferAfter) {
-        try {
-          const deferDate = task.deferDate();
-          if (!deferDate && (filter.deferBefore || filter.deferAfter)) continue;
-          if (filter.deferBefore && deferDate > new Date(filter.deferBefore)) continue;
-          if (filter.deferAfter && deferDate < new Date(filter.deferAfter)) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      // Available filter
-      if (filter.available) {
-        try {
-          if (task.completed() || task.dropped()) continue;
-          const deferDate = task.deferDate();
-          if (deferDate && deferDate > new Date()) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      totalAvailable++;
-    }
     
     return JSON.stringify({
       tasks: tasks,
       metadata: {
-        total_items: totalAvailable,
+        total_items: matches,
         items_returned: tasks.length,
         limit_applied: limit,
-        has_more: totalAvailable > tasks.length,
+        has_more: matches > tasks.length,
         query_time_ms: endTime - startTime,
         filters_applied: {
           completed: filter.completed,
@@ -233,7 +155,7 @@ export const LIST_TASKS_SCRIPT = `
           deferAfter: filter.deferAfter,
           available: filter.available
         },
-        performance_note: totalAvailable > 500 ? 
+        performance_note: matches > 500 ? 
           "Large result set. Consider using more specific filters for better performance." : 
           undefined
       }
@@ -835,7 +757,24 @@ export const GET_TASK_COUNT_SCRIPT = `
   const filter = {{filter}};
   
   try {
-    const allTasks = doc.flattenedTasks();
+    const allTasks = filter.inInbox === true ? doc.inboxTasks() : doc.flattenedTasks();
+    const hasProjectFilter = filter.projectId !== undefined;
+    const hasTagsFilter = Array.isArray(filter.tags) && filter.tags.length > 0;
+    const hasSearchFilter = typeof filter.search === 'string' && filter.search.length > 0;
+    const hasDueBeforeFilter = filter.dueBefore !== undefined && filter.dueBefore !== null;
+    const hasDueAfterFilter = filter.dueAfter !== undefined && filter.dueAfter !== null;
+    const hasDeferBeforeFilter = filter.deferBefore !== undefined && filter.deferBefore !== null;
+    const hasDeferAfterFilter = filter.deferAfter !== undefined && filter.deferAfter !== null;
+    const hasAvailabilityFilter = filter.available === true;
+
+    const normalizedSearch = hasSearchFilter ? filter.search.toLowerCase() : null;
+    const requiredTags = hasTagsFilter ? filter.tags : [];
+    const dueBeforeDate = hasDueBeforeFilter ? new Date(filter.dueBefore) : null;
+    const dueAfterDate = hasDueAfterFilter ? new Date(filter.dueAfter) : null;
+    const deferBeforeDate = hasDeferBeforeFilter ? new Date(filter.deferBefore) : null;
+    const deferAfterDate = hasDeferAfterFilter ? new Date(filter.deferAfter) : null;
+    const now = hasAvailabilityFilter ? new Date() : null;
+
     let count = 0;
     const startTime = Date.now();
     
@@ -848,7 +787,7 @@ export const GET_TASK_COUNT_SCRIPT = `
       if (filter.inInbox !== undefined && task.inInbox() !== filter.inInbox) continue;
       
       // Additional filters that require more processing
-      if (filter.projectId !== undefined) {
+      if (hasProjectFilter) {
         try {
           const project = task.containingProject();
           if (filter.projectId === null && project !== null) continue;
@@ -858,54 +797,52 @@ export const GET_TASK_COUNT_SCRIPT = `
         }
       }
       
-      if (filter.tags && filter.tags.length > 0) {
+      if (hasTagsFilter) {
         try {
           const taskTags = task.tags().map(t => t.name());
-          const hasAllTags = filter.tags.every(tag => taskTags.includes(tag));
+          const hasAllTags = requiredTags.every(tag => taskTags.includes(tag));
           if (!hasAllTags) continue;
         } catch (e) {
           continue;
         }
       }
       
-      if (filter.search) {
+      if (hasSearchFilter) {
         try {
           const name = task.name() || '';
           const note = task.note() || '';
           const searchText = (name + ' ' + note).toLowerCase();
-          if (!searchText.includes(filter.search.toLowerCase())) continue;
+          if (!searchText.includes(normalizedSearch)) continue;
         } catch (e) {
           continue;
         }
       }
       
-      if (filter.dueBefore || filter.dueAfter) {
+      if (hasDueBeforeFilter || hasDueAfterFilter) {
         try {
           const dueDate = task.dueDate();
-          if (filter.dueBefore && (!dueDate || dueDate > new Date(filter.dueBefore))) continue;
-          if (filter.dueAfter && (!dueDate || dueDate < new Date(filter.dueAfter))) continue;
+          if (hasDueBeforeFilter && (!dueDate || dueDate > dueBeforeDate)) continue;
+          if (hasDueAfterFilter && (!dueDate || dueDate < dueAfterDate)) continue;
         } catch (e) {
-          if (filter.dueBefore || filter.dueAfter) continue;
+          if (hasDueBeforeFilter || hasDueAfterFilter) continue;
         }
       }
       
-      if (filter.deferBefore || filter.deferAfter) {
+      if (hasDeferBeforeFilter || hasDeferAfterFilter) {
         try {
           const deferDate = task.deferDate();
-          if (filter.deferBefore && (!deferDate || deferDate > new Date(filter.deferBefore))) continue;
-          if (filter.deferAfter && (!deferDate || deferDate < new Date(filter.deferAfter))) continue;
+          if (hasDeferBeforeFilter && (!deferDate || deferDate > deferBeforeDate)) continue;
+          if (hasDeferAfterFilter && (!deferDate || deferDate < deferAfterDate)) continue;
         } catch (e) {
-          if (filter.deferBefore || filter.deferAfter) continue;
+          if (hasDeferBeforeFilter || hasDeferAfterFilter) continue;
         }
       }
       
-      if (filter.available) {
+      if (hasAvailabilityFilter) {
         try {
           if (task.completed() || task.dropped()) continue;
           const deferDate = task.deferDate();
-          if (deferDate && deferDate > new Date()) continue;
-          // Check if blocked (has incomplete sequential predecessors)
-          // This is simplified - full availability logic is complex
+          if (deferDate && deferDate > now) continue;
         } catch (e) {
           continue;
         }
