@@ -1,53 +1,63 @@
 export const LIST_TAGS_SCRIPT = `
   const options = {{options}};
-  
+
   try {
     const tags = [];
     const allTags = doc.flattenedTags();
-    const allTasks = doc.flattenedTasks();
-    
-    // Count task usage for each tag
+
+    // Initialize tag usage tracking
     const tagUsage = {};
-    
-    for (let i = 0; i < allTasks.length; i++) {
-      const task = allTasks[i];
+
+    // Calculate usage statistics only if requested (expensive operation on large databases)
+    if (options.includeUsageStats) {
       try {
-        const taskTags = task.tags();
-        for (let j = 0; j < taskTags.length; j++) {
-          const tagId = taskTags[j].id();
-          if (!tagUsage[tagId]) {
-            tagUsage[tagId] = {
-              total: 0,
-              active: 0,
-              completed: 0
-            };
-          }
-          tagUsage[tagId].total++;
-          if (task.completed()) {
-            tagUsage[tagId].completed++;
-          } else {
-            tagUsage[tagId].active++;
-          }
+        // Only iterate through AVAILABLE tasks (not completed/dropped)
+        // Large databases have thousands of completed tasks - iterating through them all times out
+        const flatTasks = doc.flattenedTasks();
+
+        // Count task usage for each tag (active tasks only)
+        for (let i = 0; i < flatTasks.length; i++) {
+          const task = flatTasks[i];
+          try {
+            // Skip completed and dropped tasks
+            if (task.completed() || task.dropped()) continue;
+
+            const taskTags = task.tags();
+            for (let j = 0; j < taskTags.length; j++) {
+              const tagId = taskTags[j].id();
+              if (!tagUsage[tagId]) {
+                tagUsage[tagId] = {
+                  total: 0,
+                  active: 0,
+                  completed: 0  // Will always be 0 since we only count available tasks
+                };
+              }
+              tagUsage[tagId].total++;
+              tagUsage[tagId].active++;
+            }
+          } catch (e) {}
         }
-      } catch (e) {}
+      } catch (statsError) {
+        // If usage stats calculation fails, just skip it (usage will remain all zeros)
+      }
     }
-    
+
     // Build tag list
     for (let i = 0; i < allTags.length; i++) {
       const tag = allTags[i];
       const tagId = tag.id();
       const usage = tagUsage[tagId] || { total: 0, active: 0, completed: 0 };
-      
-      // Skip empty tags if requested
-      if (!options.includeEmpty && usage.total === 0) continue;
-      
+
+      // Skip empty tags if requested (only when usage stats are calculated)
+      if (options.includeUsageStats && !options.includeEmpty && usage.total === 0) continue;
+
       const tagInfo = {
         id: tagId,
         name: tag.name(),
         usage: usage,
         status: 'active' // Tags don't have status in OmniFocus
       };
-      
+
       // Check for parent tag
       try {
         const parent = tag.parent();
@@ -56,7 +66,7 @@ export const LIST_TAGS_SCRIPT = `
           tagInfo.parentName = parent.name();
         }
       } catch (e) {}
-      
+
       // Check for child tags
       try {
         const children = tag.tags();
@@ -64,10 +74,10 @@ export const LIST_TAGS_SCRIPT = `
           tagInfo.childCount = children.length;
         }
       } catch (e) {}
-      
+
       tags.push(tagInfo);
     }
-    
+
     // Sort tags
     switch(options.sortBy) {
       case 'usage':
@@ -81,19 +91,20 @@ export const LIST_TAGS_SCRIPT = `
         tags.sort((a, b) => a.name.localeCompare(b.name));
         break;
     }
-    
+
     // Calculate summary
     const totalTags = tags.length;
-    const activeTags = tags.filter(t => t.usage.active > 0).length;
-    const emptyTags = tags.filter(t => t.usage.total === 0).length;
-    
+    const activeTags = options.includeUsageStats ? tags.filter(t => t.usage.active > 0).length : 0;
+    const emptyTags = options.includeUsageStats ? tags.filter(t => t.usage.total === 0).length : 0;
+
     return JSON.stringify({
       tags: tags,
       summary: {
         totalTags: totalTags,
         activeTags: activeTags,
         emptyTags: emptyTags,
-        mostUsed: tags.length > 0 ? tags[0].name : null
+        mostUsed: options.includeUsageStats && tags.length > 0 ? tags[0].name : null,
+        usageStatsIncluded: options.includeUsageStats
       }
     });
   } catch (error) {
