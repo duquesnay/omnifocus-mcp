@@ -59,14 +59,17 @@ export const LIST_PROJECTS_SCRIPT = `
         const deferDate = project.deferDate();
         if (deferDate) projectObj.deferDate = deferDate.toISOString();
       } catch (e) {}
-      
-      try {
-        const tasks = project.flattenedTasks();
-        projectObj.numberOfTasks = tasks.length;
-      } catch (e) {
-        projectObj.numberOfTasks = 0;
+
+      // Only count tasks if explicitly requested (expensive operation)
+      if (filter.includeTaskCount === true) {
+        try {
+          const tasks = project.flattenedTasks();
+          projectObj.numberOfTasks = tasks.length;
+        } catch (e) {
+          projectObj.numberOfTasks = 0;
+        }
       }
-      
+
       projects.push(projectObj);
     }
     

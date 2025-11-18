@@ -33,9 +33,9 @@ export interface OmniFocusProject {
   lastReviewDate?: Date;
   reviewInterval?: number; // in days
   folder?: string;
-  numberOfTasks: number;
-  numberOfAvailableTasks: number;
-  numberOfCompletedTasks: number;
+  numberOfTasks?: number; // Optional - only included when includeTaskCount is true
+  numberOfAvailableTasks?: number;
+  numberOfCompletedTasks?: number;
 }
 
 export interface OmniFocusTag {
@@ -72,6 +72,7 @@ export interface ProjectFilter {
   folder?: string;
   reviewBefore?: Date;
   search?: string;
+  includeTaskCount?: boolean; // Default: false. Warning: Expensive on large databases
 }
 
 export interface TaskUpdate {

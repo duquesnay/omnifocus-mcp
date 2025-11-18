@@ -34,6 +34,11 @@ export class ListProjectsTool extends BaseTool {
         type: 'string',
         description: 'Search in project name and notes',
       },
+      includeTaskCount: {
+        type: 'boolean',
+        description: 'Include task count for each project (default: false). Warning: Expensive operation on large databases',
+        default: false,
+      },
     },
   };
 
