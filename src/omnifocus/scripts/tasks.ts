@@ -1,21 +1,22 @@
 export const LIST_TASKS_SCRIPT = `
   const filter = {{filter}};
   const tasks = [];
-  
+
   try {
     const allTasks = doc.flattenedTasks();
     const limit = Math.min(filter.limit || 100, 1000); // Cap at 1000
     let count = 0;
+    let hasMore = false;
     const startTime = Date.now();
-    
-    for (let i = 0; i < allTasks.length && count < limit; i++) {
+
+    for (let i = 0; i < allTasks.length; i++) {
       const task = allTasks[i];
-      
+
       // Skip if task doesn't match filters
       if (filter.completed !== undefined && task.completed() !== filter.completed) continue;
       if (filter.flagged !== undefined && task.flagged() !== filter.flagged) continue;
       if (filter.inInbox !== undefined && task.inInbox() !== filter.inInbox) continue;
-      
+
       // Search filter
       if (filter.search) {
         try {
@@ -27,7 +28,7 @@ export const LIST_TASKS_SCRIPT = `
           continue;
         }
       }
-      
+
       // Project filter
       if (filter.projectId !== undefined) {
         try {
@@ -38,7 +39,7 @@ export const LIST_TASKS_SCRIPT = `
           continue;
         }
       }
-      
+
       // Tags filter
       if (filter.tags && filter.tags.length > 0) {
         try {
@@ -49,7 +50,7 @@ export const LIST_TASKS_SCRIPT = `
           continue;
         }
       }
-      
+
       // Date filters
       if (filter.dueBefore || filter.dueAfter) {
         try {
@@ -61,7 +62,7 @@ export const LIST_TASKS_SCRIPT = `
           continue;
         }
       }
-      
+
       if (filter.deferBefore || filter.deferAfter) {
         try {
           const deferDate = task.deferDate();
@@ -72,7 +73,7 @@ export const LIST_TASKS_SCRIPT = `
           continue;
         }
       }
-      
+
       // Available filter
       if (filter.available) {
         try {
@@ -83,7 +84,13 @@ export const LIST_TASKS_SCRIPT = `
           continue;
         }
       }
-      
+
+      // Early exit when limit reached
+      if (count >= limit) {
+        hasMore = true;
+        break;
+      }
+
       // Build task object with safe property access
       const taskObj = {
         id: task.id(),
@@ -92,13 +99,13 @@ export const LIST_TASKS_SCRIPT = `
         flagged: task.flagged(),
         inInbox: task.inInbox()
       };
-      
+
       // Add optional properties safely
       try {
         const note = task.note();
         if (note) taskObj.note = note;
       } catch (e) {}
-      
+
       try {
         const project = task.containingProject();
         if (project) {
@@ -106,119 +113,36 @@ export const LIST_TASKS_SCRIPT = `
           taskObj.projectId = project.id();
         }
       } catch (e) {}
-      
+
       try {
         const dueDate = task.dueDate();
         if (dueDate) taskObj.dueDate = dueDate.toISOString();
       } catch (e) {}
-      
+
       try {
         const deferDate = task.deferDate();
         if (deferDate) taskObj.deferDate = deferDate.toISOString();
       } catch (e) {}
-      
+
       try {
         const tags = task.tags();
         taskObj.tags = tags.map(t => t.name());
       } catch (e) {
         taskObj.tags = [];
       }
-      
+
       tasks.push(taskObj);
       count++;
     }
-    
+
     const endTime = Date.now();
-    const totalFiltered = count; // Tasks that matched filters (including those beyond limit)
-    let totalAvailable = 0;
-    
-    // Quick count of total matching tasks
-    for (let i = 0; i < allTasks.length; i++) {
-      const task = allTasks[i];
-      
-      // Apply same filters as main loop
-      if (filter.completed !== undefined && task.completed() !== filter.completed) continue;
-      if (filter.flagged !== undefined && task.flagged() !== filter.flagged) continue;
-      if (filter.inInbox !== undefined && task.inInbox() !== filter.inInbox) continue;
-      
-      // Search filter
-      if (filter.search) {
-        try {
-          const name = task.name() || '';
-          const note = task.note() || '';
-          const searchText = (name + ' ' + note).toLowerCase();
-          if (!searchText.includes(filter.search.toLowerCase())) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      // Project filter
-      if (filter.projectId !== undefined) {
-        try {
-          const project = task.containingProject();
-          if (filter.projectId === null && project !== null) continue;
-          if (filter.projectId !== null && (!project || project.id() !== filter.projectId)) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      // Tags filter
-      if (filter.tags && filter.tags.length > 0) {
-        try {
-          const taskTags = task.tags().map(t => t.name());
-          const hasAllTags = filter.tags.every(tag => taskTags.includes(tag));
-          if (!hasAllTags) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      // Date filters
-      if (filter.dueBefore || filter.dueAfter) {
-        try {
-          const dueDate = task.dueDate();
-          if (!dueDate && (filter.dueBefore || filter.dueAfter)) continue;
-          if (filter.dueBefore && dueDate > new Date(filter.dueBefore)) continue;
-          if (filter.dueAfter && dueDate < new Date(filter.dueAfter)) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      if (filter.deferBefore || filter.deferAfter) {
-        try {
-          const deferDate = task.deferDate();
-          if (!deferDate && (filter.deferBefore || filter.deferAfter)) continue;
-          if (filter.deferBefore && deferDate > new Date(filter.deferBefore)) continue;
-          if (filter.deferAfter && deferDate < new Date(filter.deferAfter)) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      // Available filter
-      if (filter.available) {
-        try {
-          if (task.completed() || task.dropped()) continue;
-          const deferDate = task.deferDate();
-          if (deferDate && deferDate > new Date()) continue;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      totalAvailable++;
-    }
-    
+
     return JSON.stringify({
       tasks: tasks,
       metadata: {
-        total_items: totalAvailable,
         items_returned: tasks.length,
         limit_applied: limit,
-        has_more: totalAvailable > tasks.length,
+        has_more: hasMore,
         query_time_ms: endTime - startTime,
         filters_applied: {
           completed: filter.completed,
@@ -232,10 +156,7 @@ export const LIST_TASKS_SCRIPT = `
           deferBefore: filter.deferBefore,
           deferAfter: filter.deferAfter,
           available: filter.available
-        },
-        performance_note: totalAvailable > 500 ? 
-          "Large result set. Consider using more specific filters for better performance." : 
-          undefined
+        }
       }
     });
   } catch (error) {
