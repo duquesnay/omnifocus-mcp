@@ -186,6 +186,7 @@ export const CREATE_TASK_SCRIPT = `
     
     // Handle tags before task creation
     const tagsToAdd = [];
+    const tagsNotFound = [];
     if (taskData.tags && taskData.tags.length > 0) {
       const existingTags = doc.flattenedTags();
       for (const tagName of taskData.tags) {
@@ -197,7 +198,9 @@ export const CREATE_TASK_SCRIPT = `
             break;
           }
         }
-        // Note: JXA doesn't support creating new tags reliably in task creation
+        if (!found) {
+          tagsNotFound.push(tagName);
+        }
       }
     }
     
@@ -205,11 +208,13 @@ export const CREATE_TASK_SCRIPT = `
     const newTask = app.InboxTask(taskObj);
     const inbox = doc.inboxTasks;
     inbox.push(newTask);
-    
+
     // Try to get the real OmniFocus ID by finding the task we just created
     let taskId = null;
     let createdTask = null;
-    
+    let assignedProjectName = null;
+    let tagAddError = null;
+
     try {
       const allInboxTasks = doc.inboxTasks();
       for (let i = allInboxTasks.length - 1; i >= 0; i--) {
@@ -217,16 +222,44 @@ export const CREATE_TASK_SCRIPT = `
         if (task.name() === taskData.name) {
           taskId = task.id();
           createdTask = task;
-          
+
+          // Assign to project if projectId provided
+          if (taskData.projectId) {
+            const projects = doc.flattenedProjects();
+            let projectFound = false;
+            for (let j = 0; j < projects.length; j++) {
+              if (projects[j].id() === taskData.projectId) {
+                task.assignedContainer = projects[j];
+                assignedProjectName = projects[j].name();
+                projectFound = true;
+                break;
+              }
+            }
+            if (!projectFound) {
+              // Check if this looks like Claude Desktop extracted a number from an alphanumeric ID
+              const isNumericOnly = /^\d+$/.test(taskData.projectId);
+              let errorMessage = "Project with ID '" + taskData.projectId + "' not found";
+
+              if (isNumericOnly) {
+                errorMessage += ". CLAUDE DESKTOP BUG DETECTED: Claude Desktop may have extracted numbers from an alphanumeric project ID (e.g., '547' from 'az5Ieo4ip7K'). Please use the list_projects tool to get the correct full project ID and try again.";
+              }
+
+              return JSON.stringify({
+                error: true,
+                message: errorMessage
+              });
+            }
+          }
+
           // Add tags to the created task
           if (tagsToAdd.length > 0) {
             try {
               task.addTags(tagsToAdd);
             } catch (tagError) {
-              // Tags failed to add, but task was created
+              tagAddError = tagError.toString();
             }
           }
-          
+
           break;
         }
       }
@@ -235,16 +268,34 @@ export const CREATE_TASK_SCRIPT = `
       taskId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
     }
     
-    return JSON.stringify({
+    // Build warnings for tag issues
+    const warnings = [];
+    if (tagsNotFound.length > 0) {
+      warnings.push("Tags not found and were not added: " + tagsNotFound.join(", ") + ". Use manage_tags tool to create them first.");
+    }
+    if (tagAddError) {
+      warnings.push("Error adding tags: " + tagAddError);
+    }
+
+    const result = {
       success: true,
       taskId: taskId,
       task: {
         id: taskId,
         name: taskData.name,
         flagged: taskData.flagged || false,
-        inInbox: true
+        inInbox: !assignedProjectName,
+        projectName: assignedProjectName || null,
+        tagsAdded: tagsToAdd.length,
+        tagsRequested: (taskData.tags || []).length
       }
-    });
+    };
+
+    if (warnings.length > 0) {
+      result.warnings = warnings;
+    }
+
+    return JSON.stringify(result);
   } catch (error) {
     return JSON.stringify({
       error: true,
