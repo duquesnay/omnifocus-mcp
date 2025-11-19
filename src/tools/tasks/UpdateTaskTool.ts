@@ -4,7 +4,7 @@ import { UPDATE_TASK_SCRIPT_SIMPLE } from '../../omnifocus/scripts/tasks.js';
 
 export class UpdateTaskTool extends BaseTool {
   name = 'update_task';
-  description = 'Update an existing task in OmniFocus (can move between projects using projectId)';
+  description = 'Update an existing task (can move between projects using projectId)';
   
   inputSchema = {
     type: 'object' as const,
@@ -45,7 +45,7 @@ export class UpdateTaskTool extends BaseTool {
         description: 'New tags (replaces all existing tags)',
       },
       projectId: {
-        description: 'Move task to different project - use full alphanumeric projectId from list_projects tool (e.g., "az5Ieo4ip7K", not just "547"). Use empty string "" to move task to inbox.',
+        description: 'Move to project (alphanumeric ID). Use "" for inbox.',
       },
     },
     required: ['taskId'],

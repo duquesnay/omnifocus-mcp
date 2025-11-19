@@ -3,7 +3,7 @@ import { UPDATE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class UpdateProjectTool extends BaseTool {
   name = 'update_project';
-  description = 'Update an existing project in OmniFocus, including moving between folders';
+  description = 'Update an existing project, including moving between folders';
   
   inputSchema = {
     type: 'object' as const,
@@ -43,7 +43,7 @@ export class UpdateProjectTool extends BaseTool {
           },
           folder: {
             type: ['string', 'null'],
-            description: 'Move project to folder (null to move to root)',
+            description: 'Move to folder (null for root)',
           },
         },
       },
@@ -68,14 +68,19 @@ export class UpdateProjectTool extends BaseTool {
       
       // Clear project cache since we're updating
       this.cache.clear('projects');
-      
+
       // Execute update script
-      const script = this.omniAutomation.buildScript(UPDATE_PROJECT_SCRIPT, { 
+      const script = this.omniAutomation.buildScript(UPDATE_PROJECT_SCRIPT, {
         projectId,
         updates
       });
       const result = await this.omniAutomation.execute<any>(script);
-      
+
+      // Invalidate resource cache after successful update
+      if (!result.error) {
+        this.resourceManager?.invalidate();
+      }
+
       return result;
     } catch (error) {
       return this.handleError(error);

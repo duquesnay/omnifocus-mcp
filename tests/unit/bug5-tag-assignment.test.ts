@@ -16,7 +16,8 @@ describe('BUG5: Tag Assignment in Create Task Script', () => {
     // NOT: catch (tagError) { tagAddError = tagError.toString(); }
     // YES: catch (tagError) { return JSON.stringify({ error: true, ... }); }
 
-    expect(CREATE_TASK_SCRIPT).toContain('task.addTags(tagsToAdd)');
+    // BUG5 FIX: Use correct JXA app.add() method instead of OmniAutomation task.addTags()
+    expect(CREATE_TASK_SCRIPT).toContain('app.add(tagsToAdd[i], {to: task.tags})');
     expect(CREATE_TASK_SCRIPT).toContain('catch (tagError)');
 
     // Fail-fast pattern: should return error immediately, not store in variable
@@ -40,8 +41,8 @@ describe('BUG5: Tag Assignment in Create Task Script', () => {
     expect(CREATE_TASK_SCRIPT).toContain('doc.flattenedTags()');
     expect(CREATE_TASK_SCRIPT).toContain('tagsToAdd.push(existingTags[i])');
 
-    // Verify it actually adds the tags
-    expect(CREATE_TASK_SCRIPT).toContain('task.addTags(tagsToAdd)');
+    // Verify it actually adds the tags using correct JXA method
+    expect(CREATE_TASK_SCRIPT).toContain('app.add(tagsToAdd[i], {to: task.tags})');
   });
 
   it('should return tag assignment status in response', () => {

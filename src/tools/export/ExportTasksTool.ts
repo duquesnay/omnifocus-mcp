@@ -27,7 +27,7 @@ export class ExportTasksTool extends BaseTool {
             description: 'Filter by project name',
           },
           projectId: {
-            description: 'Filter by project ID - use full alphanumeric ID from list_projects (e.g., "az5Ieo4ip7K", not "547"). Claude Desktop may incorrectly extract numbers from IDs.',
+            description: 'Filter by project ID (alphanumeric, from list_projects).',
           },
           tags: {
             type: 'array',

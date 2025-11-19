@@ -3,7 +3,7 @@ import { CREATE_TASK_SCRIPT } from '../../omnifocus/scripts/tasks.js';
 
 export class CreateTaskTool extends BaseTool {
   name = 'create_task';
-  description = 'Create a new task in OmniFocus (can be assigned to a project using projectId from list_projects)';
+  description = 'Create a new task (can be assigned to a project using projectId from list_projects)';
   
   inputSchema = {
     type: 'object' as const,
@@ -17,7 +17,7 @@ export class CreateTaskTool extends BaseTool {
         description: 'Task note/description',
       },
       projectId: {
-        description: 'Project ID to add task to - use full alphanumeric ID from list_projects tool (e.g., "az5Ieo4ip7K", not "547"). Claude Desktop may incorrectly extract numbers from IDs (if not provided, task goes to inbox)',
+        description: 'Project ID (alphanumeric, from list_projects). Omit for inbox.',
       },
       flagged: {
         type: 'boolean',

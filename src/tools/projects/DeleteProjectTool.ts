@@ -30,14 +30,19 @@ export class DeleteProjectTool extends BaseTool {
       
       // Clear project cache since we're deleting
       this.cache.clear('projects');
-      
+
       // Execute delete script
-      const script = this.omniAutomation.buildScript(DELETE_PROJECT_SCRIPT, { 
+      const script = this.omniAutomation.buildScript(DELETE_PROJECT_SCRIPT, {
         projectId,
         deleteTasks
       });
       const result = await this.omniAutomation.execute<any>(script);
-      
+
+      // Invalidate resource cache after successful deletion
+      if (!result.error) {
+        this.resourceManager?.invalidate();
+      }
+
       return result;
     } catch (error) {
       return this.handleError(error);
