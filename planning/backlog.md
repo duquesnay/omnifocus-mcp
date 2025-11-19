@@ -8,7 +8,6 @@ Project is in planning phase - user stories have been defined but implementation
 
 ## Backlog Items
 
-- [ ] BUG1: Receive active projects when filtering by status
 - [⏳] BUG3: Receive results from all tools within timeout limits (P0 - Performance)
   - Core tools fixed: list_tasks, list_projects, list_tags, analytics
   - Remaining: export, recurring tools (lower priority - less frequently used)
@@ -33,6 +32,11 @@ Project is in planning phase - user stories have been defined but implementation
 
 ## Completed
 
+- [x] BUG1: Receive active projects when filtering by status ✅ 2025-11-19
+  - OmniFocus JXA returns "active status" instead of "active"
+  - Normalized status values by removing " status" suffix
+  - Fixed filtering and API response consistency
+  - Commit: c5ba037
 - [x] BUG2: Receive task list results within timeout limits (P0 - Performance) ✅ 2025-11-18
   - Fixed double-loop anti-pattern in list_tasks
   - Replaced total_items with has_more boolean
