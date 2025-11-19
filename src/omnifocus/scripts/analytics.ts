@@ -25,7 +25,7 @@ export const PRODUCTIVITY_STATS_SCRIPT = `
         break;
     }
     
-    const allTasks = doc.flattenedTasks();
+    const allTasks = doc.availableTasks();
     let totalTasks = 0;
     let completedTasks = 0;
     let createdTasks = 0;
@@ -187,7 +187,7 @@ export const TASK_VELOCITY_SCRIPT = `
     }
     
     // Analyze tasks
-    const allTasks = doc.flattenedTasks();
+    const allTasks = doc.availableTasks();
     let totalCompleted = 0;
     let totalCreated = 0;
     const completionTimes = [];
@@ -314,7 +314,7 @@ export const OVERDUE_ANALYSIS_SCRIPT = `
     const patterns = {};
     const groupedAnalysis = {};
     
-    const allTasks = doc.flattenedTasks();
+    const allTasks = doc.availableTasks();
     let totalOverdue = 0;
     let recentlyCompletedOverdue = 0;
     let chronicallyOverdue = 0;
