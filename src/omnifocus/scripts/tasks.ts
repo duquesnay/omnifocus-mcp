@@ -213,7 +213,6 @@ export const CREATE_TASK_SCRIPT = `
     let taskId = null;
     let createdTask = null;
     let assignedProjectName = null;
-    let tagAddError = null;
 
     try {
       const allInboxTasks = doc.inboxTasks();
@@ -256,7 +255,11 @@ export const CREATE_TASK_SCRIPT = `
             try {
               task.addTags(tagsToAdd);
             } catch (tagError) {
-              tagAddError = tagError.toString();
+              // Fail-fast: Tag assignment errors should not be silently ignored
+              return JSON.stringify({
+                error: true,
+                message: "Failed to add tags to task: " + tagError.toString()
+              });
             }
           }
 
@@ -272,9 +275,6 @@ export const CREATE_TASK_SCRIPT = `
     const warnings = [];
     if (tagsNotFound.length > 0) {
       warnings.push("Tags not found and were not added: " + tagsNotFound.join(", ") + ". Use manage_tags tool to create them first.");
-    }
-    if (tagAddError) {
-      warnings.push("Error adding tags: " + tagAddError);
     }
 
     const result = {

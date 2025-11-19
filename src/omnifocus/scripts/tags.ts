@@ -260,10 +260,10 @@ export const MANAGE_TAGS_SCRIPT = `
         
         // Move all tasks from source to target
         let mergedCount = 0;
-        const tasks = doc.flattenedTasks();
-        
-        for (let i = 0; i < tasks.length; i++) {
-          const task = tasks[i];
+        const allTasks = doc.flattenedTasks();
+
+        for (let i = 0; i < allTasks.length; i++) {
+          const task = allTasks[i];
           try {
             const taskTags = task.tags();
             let hasSourceTag = false;
