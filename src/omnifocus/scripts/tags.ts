@@ -279,14 +279,14 @@ export const MANAGE_TAGS_SCRIPT = `
             }
             
             if (hasSourceTag) {
-              // Remove source tag
-              task.removeTags([sourceTag]);
-              
-              // Add target tag if not already present
+              // Remove source tag using JXA app.remove() method
+              app.remove(sourceTag, {from: task.tags});
+
+              // Add target tag if not already present using JXA app.add() method
               if (!hasTargetTag) {
-                task.addTags([targetTagObj]);
+                app.add(targetTagObj, {to: task.tags});
               }
-              
+
               mergedCount++;
             }
           } catch (e) {}

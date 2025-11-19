@@ -10,23 +10,23 @@ describe('Tag Operations Fix Verification', () => {
     expect(LIST_TAGS_SCRIPT).toContain('tag.id.primaryKey');
   });
   
-  it('should use plural methods for tag manipulation', () => {
-    // Verify we're using the correct plural methods
-    expect(MANAGE_TAGS_SCRIPT).toContain('task.removeTags([sourceTag])');
-    expect(MANAGE_TAGS_SCRIPT).toContain('task.addTags([targetTagObj])');
-    
-    // Should not contain singular methods
-    expect(MANAGE_TAGS_SCRIPT).not.toContain('task.removeTag(');
-    expect(MANAGE_TAGS_SCRIPT).not.toContain('task.addTag(');
+  it('should use correct JXA app.add/remove methods for tag manipulation', () => {
+    // BUG5 FIX: Verify we're using correct JXA methods (not OmniAutomation methods)
+    expect(MANAGE_TAGS_SCRIPT).toContain('app.remove(sourceTag, {from: task.tags})');
+    expect(MANAGE_TAGS_SCRIPT).toContain('app.add(targetTagObj, {to: task.tags})');
+
+    // Should not contain OmniAutomation methods
+    expect(MANAGE_TAGS_SCRIPT).not.toContain('task.removeTags(');
+    expect(MANAGE_TAGS_SCRIPT).not.toContain('task.addTags(');
   });
   
-  it('should properly handle array conversions', () => {
-    // Check that we're passing arrays to add/remove methods
-    const addTagsPattern = /task\.addTags\(\[[^\]]+\]\)/;
-    const removeTagsPattern = /task\.removeTags\(\[[^\]]+\]\)/;
-    
-    expect(MANAGE_TAGS_SCRIPT).toMatch(addTagsPattern);
-    expect(MANAGE_TAGS_SCRIPT).toMatch(removeTagsPattern);
+  it('should use JXA app.add/remove with correct syntax', () => {
+    // BUG5 FIX: Check that we're using correct JXA app.add/remove syntax
+    const addPattern = /app\.add\([^,]+,\s*\{to:\s*task\.tags\}\)/;
+    const removePattern = /app\.remove\([^,]+,\s*\{from:\s*task\.tags\}\)/;
+
+    expect(MANAGE_TAGS_SCRIPT).toMatch(addPattern);
+    expect(MANAGE_TAGS_SCRIPT).toMatch(removePattern);
   });
   
   it('should return JSON stringified results', () => {

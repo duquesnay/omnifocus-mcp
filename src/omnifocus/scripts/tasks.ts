@@ -253,7 +253,10 @@ export const CREATE_TASK_SCRIPT = `
           // Add tags to the created task
           if (tagsToAdd.length > 0) {
             try {
-              task.addTags(tagsToAdd);
+              // Use JXA app.add() method - not task.addTags() which is OmniAutomation only
+              for (let i = 0; i < tagsToAdd.length; i++) {
+                app.add(tagsToAdd[i], {to: task.tags});
+              }
             } catch (tagError) {
               // Fail-fast: Tag assignment errors should not be silently ignored
               return JSON.stringify({
@@ -467,7 +470,10 @@ export const UPDATE_TASK_SCRIPT = `
       
       // Remove all existing tags
       if (currentTags.length > 0) {
-        task.removeTags(currentTags);
+        // Use JXA app.remove() method - not task.removeTags() which is OmniAutomation only
+        for (let i = 0; i < currentTags.length; i++) {
+          app.remove(currentTags[i], {from: task.tags});
+        }
       }
       
       // Add new tags
@@ -493,7 +499,10 @@ export const UPDATE_TASK_SCRIPT = `
         }
         
         if (tagsToAdd.length > 0) {
-          task.addTags(tagsToAdd);
+          // Use JXA app.add() method - not task.addTags() which is OmniAutomation only
+          for (let i = 0; i < tagsToAdd.length; i++) {
+            app.add(tagsToAdd[i], {to: task.tags});
+          }
         }
       }
     }
