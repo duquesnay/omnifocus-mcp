@@ -9,6 +9,7 @@ export interface CacheConfig {
   projects: { ttl: number };
   analytics: { ttl: number };
   tags: { ttl: number };
+  resources: { ttl: number };
 }
 
 export type CacheCategory = keyof CacheConfig;
