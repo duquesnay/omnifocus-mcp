@@ -1,6 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { CacheManager } from '../cache/CacheManager.js';
+import { ResourceManager } from '../resources/ResourceManager.js';
 import { createLogger } from '../utils/logger.js';
 
 // Import task tools
@@ -39,44 +40,48 @@ import { GetRecurringPatternsTool } from './recurring/GetRecurringPatternsTool.j
 
 const logger = createLogger('tools');
 
-export async function registerTools(server: Server, cache: CacheManager): Promise<void> {
+export async function registerTools(
+  server: Server,
+  cache: CacheManager,
+  resourceManager?: ResourceManager
+): Promise<void> {
   // Initialize all tools
   const tools = [
     // Task tools - Read operations
-    new ListTasksTool(cache),
-    new GetTaskCountTool(cache),
-    new TodaysAgendaTool(cache),
-    
+    new ListTasksTool(cache, resourceManager),
+    new GetTaskCountTool(cache, resourceManager),
+    new TodaysAgendaTool(cache, resourceManager),
+
     // Task tools - Write operations (now enabled with correct JXA syntax)
-    new CreateTaskTool(cache),
-    new UpdateTaskTool(cache),
-    new CompleteTaskTool(cache),
-    new DeleteTaskTool(cache),
-    
+    new CreateTaskTool(cache, resourceManager),
+    new UpdateTaskTool(cache, resourceManager),
+    new CompleteTaskTool(cache, resourceManager),
+    new DeleteTaskTool(cache, resourceManager),
+
     // Project tools
-    new ListProjectsTool(cache),
-    new CreateProjectTool(cache),
-    new UpdateProjectTool(cache),
-    new CompleteProjectTool(cache),
-    new DeleteProjectTool(cache),
-    
+    new ListProjectsTool(cache, resourceManager),
+    new CreateProjectTool(cache, resourceManager),
+    new UpdateProjectTool(cache, resourceManager),
+    new CompleteProjectTool(cache, resourceManager),
+    new DeleteProjectTool(cache, resourceManager),
+
     // Analytics tools
-    new ProductivityStatsTool(cache),
-    new TaskVelocityTool(cache),
-    new OverdueAnalysisTool(cache),
-    
+    new ProductivityStatsTool(cache, resourceManager),
+    new TaskVelocityTool(cache, resourceManager),
+    new OverdueAnalysisTool(cache, resourceManager),
+
     // Tag tools
-    new ListTagsTool(cache),
-    new ManageTagsTool(cache),
-    
+    new ListTagsTool(cache, resourceManager),
+    new ManageTagsTool(cache, resourceManager),
+
     // Export tools
-    new ExportTasksTool(cache),
-    new ExportProjectsTool(cache),
-    new BulkExportTool(cache),
-    
+    new ExportTasksTool(cache, resourceManager),
+    new ExportProjectsTool(cache, resourceManager),
+    new BulkExportTool(cache, resourceManager),
+
     // Recurring task tools
-    new AnalyzeRecurringTasksTool(cache),
-    new GetRecurringPatternsTool(cache),
+    new AnalyzeRecurringTasksTool(cache, resourceManager),
+    new GetRecurringPatternsTool(cache, resourceManager),
   ];
   
   // Register handlers
