@@ -1,6 +1,503 @@
-# OmniFocus MCP Resources - User Stories
+# OmniFocus MCP - User Stories
 
-## Epic: Provide Ergonomic Read-Only Data Access for AI Assistants
+## Overview
+This document contains detailed user stories for all OmniFocus MCP capabilities, organized by epic and implementation phase.
+
+---
+
+## Epic 1: Core Task Management Operations
+
+### User Story: TOOL1 - Create Tasks
+**As a** user managing my work
+**I want to** create new tasks with complete metadata (name, notes, dates, project, tags)
+**So that** I can capture actionable items with all necessary context
+
+**Acceptance Criteria**:
+- [x] Create task with name only (minimal viable task)
+- [x] Optionally specify due date, defer date
+- [x] Attach to project via project name or ID
+- [x] Apply multiple tags during creation
+- [x] Add notes for additional context
+- [x] Return created task ID for reference
+- [x] Validate date formats and project/tag existence
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: TOOL2 - Update Tasks
+**As a** user refining my task list
+**I want to** update any task property without recreation
+**So that** I can keep tasks current as priorities change
+
+**Acceptance Criteria**:
+- [x] Update name, notes independently
+- [x] Modify due date, defer date
+- [x] Reassign to different project
+- [x] Replace or append tags
+- [x] Clear optional fields (dates, project)
+- [x] Preserve unchanged properties
+- [x] Return confirmation of changes
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: TOOL3 - Complete Tasks
+**As a** user finishing work
+**I want to** mark tasks complete with single operation
+**So that** I can track progress efficiently
+
+**Acceptance Criteria**:
+- [x] Complete task by ID
+- [x] Set completion timestamp
+- [x] Remove from available task list
+- [x] Preserve in completed history
+- [x] Return confirmation
+- [x] Handle already-completed tasks gracefully
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: TOOL4 - Delete Tasks
+**As a** user managing irrelevant items
+**I want to** permanently delete tasks
+**So that** I can remove clutter from my system
+
+**Acceptance Criteria**:
+- [x] Delete task by ID
+- [x] Confirm deletion irreversibility
+- [x] Return success confirmation
+- [x] Handle missing task IDs gracefully
+- [x] No cascading project deletion
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: TOOL5 - List Tasks
+**As a** user reviewing my workload
+**I want to** view filtered task lists with rich metadata
+**So that** I can understand current commitments
+
+**Acceptance Criteria**:
+- [x] List all available tasks
+- [x] Filter by project, tag, status
+- [x] Include full task metadata
+- [x] Support pagination for large lists
+- [x] Sort by due date, creation date
+- [x] Return task counts with results
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: TOOL6 - Today's Agenda
+**As a** user planning my day
+**I want to** see consolidated agenda (due/overdue/flagged)
+**So that** I can prioritize immediate work
+
+**Acceptance Criteria**:
+- [x] Return tasks due today
+- [x] Include overdue tasks prominently
+- [x] Show flagged tasks for attention
+- [x] Pre-sorted by priority
+- [x] Single-call efficiency
+- [x] Full context per task
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: TOOL7 - Task Count
+**As a** user assessing workload
+**I want to** get quick task counts by status
+**So that** I can gauge overall progress
+
+**Acceptance Criteria**:
+- [x] Count available tasks
+- [x] Count completed tasks
+- [x] Count overdue tasks
+- [x] Count flagged tasks
+- [x] Sub-second response time
+- [x] No detailed data overhead
+
+**Status**: ✅ Completed v1.0
+
+---
+
+## Epic 2: Project Management Operations
+
+### User Story: PROJ1 - Create Projects
+**As a** user organizing work
+**I want to** create projects with hierarchy and metadata
+**So that** I can structure complex initiatives
+
+**Acceptance Criteria**:
+- [x] Create project with name
+- [x] Nest under parent project
+- [x] Set project status (active/on-hold/dropped)
+- [x] Add project notes
+- [x] Return project ID
+- [x] Support sequential/parallel task ordering
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: PROJ2 - Update Projects
+**As a** user managing project lifecycle
+**I want to** update project properties independently
+**So that** I can reflect changing priorities
+
+**Acceptance Criteria**:
+- [x] Update name, notes
+- [x] Change status (active ↔ on-hold ↔ dropped)
+- [x] Reassign parent project
+- [x] Modify review dates
+- [x] Preserve unchanged properties
+- [x] Return confirmation
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: PROJ3 - Complete Projects
+**As a** user finishing initiatives
+**I want to** mark entire projects complete
+**So that** I can close completed work
+
+**Acceptance Criteria**:
+- [x] Complete project by ID
+- [x] Set completion timestamp
+- [x] Handle incomplete tasks appropriately
+- [x] Remove from active list
+- [x] Preserve in history
+- [x] Return confirmation
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: PROJ4 - Delete Projects
+**As a** user managing obsolete projects
+**I want to** permanently delete projects
+**So that** I can remove abandoned initiatives
+
+**Acceptance Criteria**:
+- [x] Delete project by ID
+- [x] Handle contained tasks (delete or orphan)
+- [x] Confirm irreversibility
+- [x] Return success confirmation
+- [x] Handle missing project IDs gracefully
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: PROJ5 - List Projects
+**As a** user reviewing initiatives
+**I want to** view filtered project lists with metadata
+**So that** I can assess organizational structure
+
+**Acceptance Criteria**:
+- [x] List all projects
+- [x] Filter by status (active/on-hold/dropped/completed)
+- [x] Include task counts per project
+- [x] Show hierarchy relationships
+- [x] Include review dates
+- [x] Support pagination
+
+**Status**: ✅ Completed v1.0
+
+---
+
+## Epic 3: Tag and Context Management
+
+### User Story: TAG1 - List Tags
+**As a** user working with contexts
+**I want to** see all available tags with usage statistics
+**So that** I can understand tag taxonomy
+
+**Acceptance Criteria**:
+- [x] List all tags in system
+- [x] Include task counts per tag
+- [x] Show active vs total tasks
+- [x] Fast retrieval (<1 second)
+- [x] Alphabetical sorting
+- [x] Handle empty tag list
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: TAG2 - Manage Tags
+**As a** user organizing tasks by context
+**I want to** add/remove tags from tasks
+**So that** I can categorize work flexibly
+
+**Acceptance Criteria**:
+- [x] Add tags to task
+- [x] Remove tags from task
+- [x] Replace all tags
+- [x] Create tags implicitly during add
+- [x] Return updated tag list
+- [x] Handle non-existent tags gracefully
+
+**Status**: ✅ Completed v1.0
+
+---
+
+## Epic 4: Analytics and Insights
+
+### User Story: ANAL1 - Overdue Analysis
+**As a** user managing delays
+**I want to** analyze overdue tasks by age and project
+**So that** I can prioritize catch-up work
+
+**Acceptance Criteria**:
+- [x] Calculate days overdue per task
+- [x] Group by project for context
+- [x] Sort by urgency (most overdue first)
+- [x] Include task metadata
+- [x] Filter out completed/dropped
+- [x] Fast computation (<1 second)
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: ANAL2 - Productivity Statistics
+**As a** user reviewing performance
+**I want to** see productivity stats across time periods
+**So that** I can identify trends
+
+**Acceptance Criteria**:
+- [x] Calculate completion rate
+- [x] Track tasks completed per day/week/month
+- [x] Compare periods (this week vs last)
+- [x] Include task velocity
+- [x] Generate summary statistics
+- [x] Fast computation with caching
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: ANAL3 - Task Velocity
+**As a** user optimizing workflow
+**I want to** track task completion velocity over time
+**So that** I can forecast capacity
+
+**Acceptance Criteria**:
+- [x] Calculate tasks completed per time unit
+- [x] Show trending (up/down/stable)
+- [x] Include moving averages
+- [x] Break down by project/tag
+- [x] Identify bottlenecks
+- [x] Export velocity data
+
+**Status**: ✅ Completed v1.0
+
+---
+
+## Epic 5: Data Export and Integration
+
+### User Story: EXPORT1 - Bulk Export
+**As a** user backing up data
+**I want to** export all OmniFocus data in JSON format
+**So that** I can archive or process externally
+
+**Acceptance Criteria**:
+- [x] Export all tasks, projects, tags
+- [x] Include complete metadata
+- [x] Generate valid JSON
+- [x] Handle large datasets (streaming if needed)
+- [x] Return download link or file
+- [x] Preserve relationships (task → project)
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: EXPORT2 - Export Projects
+**As a** user sharing project data
+**I want to** export specific projects with tasks
+**So that** I can collaborate or archive selectively
+
+**Acceptance Criteria**:
+- [x] Export project by ID
+- [x] Include all contained tasks
+- [x] Preserve hierarchy
+- [x] Include metadata
+- [x] JSON format
+- [x] Handle empty projects
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: EXPORT3 - Export Tasks
+**As a** user extracting filtered data
+**I want to** export task lists matching criteria
+**So that** I can analyze subsets externally
+
+**Acceptance Criteria**:
+- [x] Export with same filters as list_tasks
+- [x] Include full task metadata
+- [x] JSON format
+- [x] Handle large result sets
+- [x] Preserve sort order
+- [x] Return task count with export
+
+**Status**: ✅ Completed v1.0
+
+---
+
+## Epic 6: Recurring Task Intelligence
+
+### User Story: RECUR1 - Analyze Patterns
+**As a** user optimizing recurring work
+**I want to** analyze recurring task patterns
+**So that** I can identify optimization opportunities
+
+**Acceptance Criteria**:
+- [x] Identify repeat cycles (daily/weekly/monthly)
+- [x] Calculate repeat frequency
+- [x] Group by pattern type
+- [x] Show pattern health (on-time vs late)
+- [x] Suggest optimizations
+- [x] Fast analysis (<2 seconds)
+
+**Status**: ✅ Completed v1.0
+
+---
+
+### User Story: RECUR2 - Identify Cycles
+**As a** user managing repeated work
+**I want to** see all recurring patterns in database
+**So that** I can understand regular commitments
+
+**Acceptance Criteria**:
+- [x] List all recurring task rules
+- [x] Show next occurrence dates
+- [x] Include pattern metadata
+- [x] Count occurrences completed
+- [x] Identify broken patterns
+- [x] Return structured data
+
+**Status**: ✅ Completed v1.0
+
+---
+
+## Epic 7: Performance and Caching
+
+### User Story: CACHE1 - Concurrent Sessions
+**As a** system serving multiple AI conversations
+**I want to** maintain fresh data across 5+ concurrent sessions
+**So that** all conversations see consistent state
+
+**Acceptance Criteria**:
+- [x] Support 10+ concurrent requests
+- [x] Thread-safe cache operations
+- [x] No cache collision between sessions
+- [x] Shared cache for efficiency
+- [x] Memory limit enforcement (<100MB)
+- [x] Graceful degradation under load
+
+**Status**: ✅ Completed v1.1
+
+---
+
+### User Story: CACHE2 - Write Invalidation
+**As a** system maintaining data consistency
+**I want to** invalidate stale cache after write operations
+**So that** reads never return outdated data
+
+**Acceptance Criteria**:
+- [x] Invalidate on task create/update/delete
+- [x] Invalidate on project create/update/delete
+- [x] Selective invalidation (not full flush)
+- [x] Immediate invalidation (no delay)
+- [x] Cascade invalidation (task → project list)
+- [x] No race conditions
+
+**Status**: ✅ Completed v1.1
+
+---
+
+### User Story: CACHE3 - Memory Management
+**As a** system running long-term
+**I want to** prevent memory leaks via TTL-based cleanup
+**So that** server remains stable over days/weeks
+
+**Acceptance Criteria**:
+- [x] TTL-based entry expiration (30s - 1h)
+- [x] Automatic cleanup of expired entries
+- [x] Memory monitoring
+- [x] Configurable TTL per cache type
+- [x] Cleanup runs every 5 minutes
+- [x] No memory growth over time
+
+**Status**: ✅ Completed v1.1
+
+---
+
+### User Story: CACHE4 - Metrics Monitoring
+**As a** developer optimizing performance
+**I want to** track cache hit/miss rates and memory usage
+**So that** I can tune cache parameters
+
+**Acceptance Criteria**:
+- [x] Expose hit/miss counters
+- [x] Track memory usage per cache
+- [x] Calculate hit rate percentage
+- [x] Log metrics periodically
+- [x] Expose via debug endpoint
+- [x] Include cache size statistics
+
+**Status**: ✅ Completed v1.1
+
+---
+
+## Epic 8: Infrastructure and Error Handling
+
+### User Story: INFRA1 - Permission Handling
+**As a** server dealing with macOS security
+**I want to** handle missing OmniFocus permissions gracefully
+**So that** users receive actionable guidance
+
+**Acceptance Criteria**:
+- [x] Detect permission errors (code -1743)
+- [x] Check permissions on startup (non-blocking)
+- [x] Return clear error messages
+- [x] Continue running without permissions
+- [x] Cache permission status
+- [x] Guide users to System Settings
+
+**Status**: ✅ Completed v1.2
+
+---
+
+### User Story: INFRA2 - Error Messages
+**As a** user encountering configuration issues
+**I want to** receive actionable error messages
+**So that** I can resolve problems independently
+
+**Acceptance Criteria**:
+- [x] Clear error descriptions (no jargon)
+- [x] Include resolution steps
+- [x] Link to documentation
+- [x] Appropriate error codes (MCP standard)
+- [x] Contextual help based on error type
+- [x] Log errors for debugging
+
+**Status**: ✅ Completed v1.2
+
+---
+
+## Epic 9: Provide Ergonomic Read-Only Data Access for AI Assistants
 
 ### Overview
 AI assistants need efficient, cached, and well-structured access to OmniFocus data to provide intelligent task management assistance without the overhead of multiple tool calls or data modification risks.

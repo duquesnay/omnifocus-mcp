@@ -116,3 +116,7 @@ npm run scripts/run-cucumber-tests.sh
 - OmniFocus JXA returns temporary IDs for new tasks
 - IDs are extracted from script output using regex patterns
 - See src/omnifocus/scripts/tasks.ts for ID handling logic
+- Refer to the skills agile-flow, tdd, backlog management, spike when you need them
+- Refer to the skills agile-flow, tdd, backlog management, spike when you need them
+- Refer to the skills agile-flow, tdd, backlog management, spike when you 
+need them
