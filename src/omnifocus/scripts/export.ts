@@ -190,7 +190,7 @@ export const EXPORT_PROJECTS_SCRIPT = `
       const projectData = {
         id: project.id(),
         name: project.name(),
-        status: project.status ? project.status.name : 'active'
+        status: project.status().replace(/ status$/, '') // Normalize status value
       };
       
       // Add note if present

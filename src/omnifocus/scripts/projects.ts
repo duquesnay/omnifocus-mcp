@@ -10,8 +10,10 @@ export const LIST_PROJECTS_SCRIPT = `
       
       // Apply filters
       if (filter.status && filter.status.length > 0) {
-        const projectStatus = project.status();
-        if (!filter.status.includes(projectStatus)) continue;
+        const projectStatus = project.status(); // Returns "active status", "done status", etc.
+        // Normalize by removing " status" suffix for comparison
+        const normalizedStatus = projectStatus.replace(/ status$/, '');
+        if (!filter.status.includes(normalizedStatus)) continue;
       }
       
       if (filter.flagged !== undefined && project.flagged() !== filter.flagged) continue;
@@ -35,7 +37,7 @@ export const LIST_PROJECTS_SCRIPT = `
       const projectObj = {
         id: project.id(),
         name: project.name(),
-        status: project.status(),
+        status: project.status().replace(/ status$/, ''), // Normalize status value
         flagged: project.flagged()
       };
       
