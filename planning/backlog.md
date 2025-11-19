@@ -8,6 +8,7 @@ Project is in planning phase - user stories have been defined but implementation
 
 ## Backlog Items
 
+- [ ] BUG4: Tasks created with project and tags end up in inbox without project or tags
 - [⏳] BUG3: Receive results from all tools within timeout limits (P0 - Performance)
   - Core tools fixed: list_tasks, list_projects, list_tags, analytics
   - Remaining: export, recurring tools (lower priority - less frequently used)
