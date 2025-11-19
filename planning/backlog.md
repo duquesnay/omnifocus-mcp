@@ -7,11 +7,6 @@ This backlog tracks the implementation of read-only MCP resources for OmniFocus 
 Project is in planning phase - user stories have been defined but implementation has not begun.
 
 ## Backlog Items
-
-- [ ] BUG4: Tasks created with project and tags end up in inbox without project or tags
-- [⏳] BUG3: Receive results from all tools within timeout limits (P0 - Performance)
-  - Core tools fixed: list_tasks, list_projects, list_tags, analytics
-  - Remaining: export, recurring tools (lower priority - less frequently used)
 - [ ] RES1: Access resource infrastructure with caching capabilities
 - [ ] RES2: Discover available resources and their usage patterns
 - [ ] RES3: Fetch today's complete agenda in a single call
@@ -33,6 +28,18 @@ Project is in planning phase - user stories have been defined but implementation
 
 ## Completed
 
+- [x] BUG3: Receive results from all tools within timeout limits (P0 - Performance) ✅ 2025-11-19
+  - Core tools optimized: list_tasks, list_projects, list_tags, analytics, analyze_recurring_tasks
+  - Export tools already had includeStats parameter (export_projects, bulk_export)
+  - Pattern: Make expensive operations optional, use availableTasks() when appropriate
+  - analyze_recurring_tasks now uses availableTasks() when activeOnly=true (default)
+  - Commits: bf87ff8 (list_tasks), c5ba037 (list_projects), list_tags fix, 7c19bd1 (recurring)
+- [x] BUG4: Tasks created with project and tags end up in inbox without project or tags ✅ 2025-11-19
+  - CREATE_TASK_SCRIPT was ignoring projectId parameter
+  - Added project assignment logic using task.assignedContainer
+  - Improved tag error reporting with warnings array
+  - Enhanced response with projectName, tagsAdded, tagsRequested fields
+  - Commit: e89dd09
 - [x] BUG1: Receive active projects when filtering by status ✅ 2025-11-19
   - OmniFocus JXA returns "active status" instead of "active"
   - Normalized status values by removing " status" suffix
