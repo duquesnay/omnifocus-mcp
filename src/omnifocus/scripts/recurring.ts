@@ -1,19 +1,20 @@
 export const ANALYZE_RECURRING_TASKS_SCRIPT = `
   const options = {{options}};
-  
+
   try {
     const recurringTasks = [];
-    const allTasks = doc.flattenedTasks();
+    // Use availableTasks() when activeOnly is true for better performance
+    const allTasks = options.activeOnly ? doc.availableTasks() : doc.flattenedTasks();
     const now = new Date();
-    
+
     for (let i = 0; i < allTasks.length; i++) {
       const task = allTasks[i];
-      
+
       // Check if task has repetition rule
       const repetitionRule = task.repetitionRule();
       if (!repetitionRule) continue;
-      
-      // Skip if filtering by active only and task is completed
+
+      // Skip if filtering by active only and task is completed (safety check, availableTasks should already filter)
       if (options.activeOnly && task.completed()) continue;
       
       const taskInfo = {
