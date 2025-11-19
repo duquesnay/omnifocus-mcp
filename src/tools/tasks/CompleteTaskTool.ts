@@ -3,7 +3,7 @@ import { COMPLETE_TASK_SCRIPT, COMPLETE_TASK_OMNI_SCRIPT } from '../../omnifocus
 
 export class CompleteTaskTool extends BaseTool {
   name = 'complete_task';
-  description = 'Mark a task as completed in OmniFocus';
+  description = 'Mark a task as completed';
   
   inputSchema = {
     type: 'object' as const,

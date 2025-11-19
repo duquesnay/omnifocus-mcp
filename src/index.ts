@@ -13,6 +13,7 @@ const server = new Server(
   {
     name: 'omnifocus-mcp-cached',
     version: '1.0.0',
+    description: 'OmniFocus task and project management. All tools interact with your local OmniFocus database. Project IDs are alphanumeric (e.g., "az5Ieo4ip7K"), not numeric indices.',
   },
   {
     capabilities: {

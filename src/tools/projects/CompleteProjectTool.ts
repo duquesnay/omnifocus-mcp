@@ -3,7 +3,7 @@ import { COMPLETE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class CompleteProjectTool extends BaseTool {
   name = 'complete_project';
-  description = 'Mark a project as completed in OmniFocus';
+  description = 'Mark a project as completed';
   
   inputSchema = {
     type: 'object' as const,

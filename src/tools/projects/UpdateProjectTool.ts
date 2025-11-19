@@ -3,7 +3,7 @@ import { UPDATE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class UpdateProjectTool extends BaseTool {
   name = 'update_project';
-  description = 'Update an existing project in OmniFocus, including moving between folders';
+  description = 'Update an existing project, including moving between folders';
   
   inputSchema = {
     type: 'object' as const,
@@ -43,7 +43,7 @@ export class UpdateProjectTool extends BaseTool {
           },
           folder: {
             type: ['string', 'null'],
-            description: 'Move project to folder (null to move to root)',
+            description: 'Move to folder (null for root)',
           },
         },
       },

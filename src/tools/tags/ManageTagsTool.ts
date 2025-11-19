@@ -3,7 +3,7 @@ import { MANAGE_TAGS_SCRIPT } from '../../omnifocus/scripts/tags.js';
 
 export class ManageTagsTool extends BaseTool {
   name = 'manage_tags';
-  description = 'Create, rename, or delete tags in OmniFocus';
+  description = 'Create, rename, or delete tags';
   
   inputSchema = {
     type: 'object' as const,

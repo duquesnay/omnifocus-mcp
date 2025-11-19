@@ -3,7 +3,7 @@ import { CREATE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class CreateProjectTool extends BaseTool {
   name = 'create_project';
-  description = 'Create a new project in OmniFocus with optional folder placement (creates folder if needed)';
+  description = 'Create a new project with optional folder placement (creates folder if needed)';
   
   inputSchema = {
     type: 'object' as const,
