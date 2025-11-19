@@ -2,6 +2,7 @@
 
 ## Planned
 
+- [ ] FEAT1: User adds/removes individual tags without replacing all tags
 - [ ] RES1: AI assistant retrieves task data in <100ms via cached resources
 - [ ] RES2: AI assistant discovers available data sources without reading documentation
 - [ ] RES3: AI assistant fetches today's complete agenda in single request
