@@ -1,52 +1,27 @@
-# OmniFocus MCP Resources Backlog
+# OmniFocus MCP Backlog
 
-## Overview
-This backlog tracks the implementation of read-only MCP resources for OmniFocus data access, providing the AI assistant with efficient, cached access to task management data.
+## Planned
 
-## Current Status
-Project is in planning phase - user stories have been defined but implementation has not begun.
-
-## Backlog Items
-- [ ] RES1: Access resource infrastructure with caching capabilities
-- [ ] RES2: Discover available resources and their usage patterns
-- [ ] RES3: Fetch today's complete agenda in a single call
-- [ ] RES4: Paginate through large task lists without overflow
-- [ ] RES5: Navigate complete project hierarchy with statistics
-- [ ] RES6: Retrieve detailed task information by ID
-- [ ] RES7: Analyze project progress with embedded task data
-- [ ] RES8: Search tasks by tag with efficient caching
-- [ ] RES9: Prioritize overdue tasks with urgency sorting
-- [ ] RES10: View structured week-ahead planning data
-- [ ] RES11: Perform semantic search across task content
-- [ ] RES12: Consume human-readable markdown formats
-- [ ] TPF1: Export tasks and projects in TaskPaper format for sharing
-- [ ] TPF2: Import TaskPaper formatted text to create tasks and projects
-- [ ] TPF3: Present task hierarchies in TaskPaper plain text format
-- [ ] RES13: Subscribe to data changes for long conversations
-
----
+- [ ] RES1: AI assistant retrieves task data in <100ms via cached resources
+- [ ] RES2: AI assistant discovers available data sources without reading documentation
+- [ ] RES3: AI assistant fetches today's complete agenda in single request
+- [ ] RES4: AI assistant handles large task lists without memory overflow
+- [ ] RES5: AI assistant navigates project hierarchy with embedded statistics
+- [ ] RES6: AI assistant retrieves detailed task information by ID efficiently
+- [ ] RES7: AI assistant analyzes project progress with embedded task data
+- [ ] RES8: AI assistant searches tasks by tag with efficient caching
+- [ ] RES9: AI assistant prioritizes work with overdue tasks sorted by urgency
+- [ ] RES10: AI assistant plans week ahead with structured data view
+- [ ] RES11: AI assistant performs semantic search across task content
+- [ ] RES12: AI assistant reads task data in human-readable markdown format
+- [ ] TPF1: User exports tasks and projects in TaskPaper format for sharing
+- [ ] TPF2: User imports TaskPaper formatted text to create tasks and projects
+- [ ] TPF3: AI assistant presents task hierarchies in TaskPaper plain text format
+- [ ] RES13: AI assistant receives data change notifications during long conversations
 
 ## Completed
 
-- [x] BUG3: Receive results from all tools within timeout limits (P0 - Performance) ✅ 2025-11-19
-  - Core tools optimized: list_tasks, list_projects, list_tags, analytics, analyze_recurring_tasks
-  - Export tools already had includeStats parameter (export_projects, bulk_export)
-  - Pattern: Make expensive operations optional, use availableTasks() when appropriate
-  - analyze_recurring_tasks now uses availableTasks() when activeOnly=true (default)
-  - Commits: bf87ff8 (list_tasks), c5ba037 (list_projects), list_tags fix, 7c19bd1 (recurring)
-- [x] BUG4: Tasks created with project and tags end up in inbox without project or tags ✅ 2025-11-19
-  - CREATE_TASK_SCRIPT was ignoring projectId parameter
-  - Added project assignment logic using task.assignedContainer
-  - Improved tag error reporting with warnings array
-  - Enhanced response with projectName, tagsAdded, tagsRequested fields
-  - Commit: e89dd09
-- [x] BUG1: Receive active projects when filtering by status ✅ 2025-11-19
-  - OmniFocus JXA returns "active status" instead of "active"
-  - Normalized status values by removing " status" suffix
-  - Fixed filtering and API response consistency
-  - Commit: c5ba037
-- [x] BUG2: Receive task list results within timeout limits (P0 - Performance) ✅ 2025-11-18
-  - Fixed double-loop anti-pattern in list_tasks
-  - Replaced total_items with has_more boolean
-  - Performance: 100x faster (30+ seconds → <1 second)
-  - Commit: bf87ff8
+- [x] BUG3: AI receives tool results within timeout limits ✅ 2025-11-19
+- [x] BUG4: User creates tasks with specified project and tags ✅ 2025-11-19
+- [x] BUG1: AI filters projects by status correctly ✅ 2025-11-19
+- [x] BUG2: AI lists tasks in <1 second ✅ 2025-11-18
