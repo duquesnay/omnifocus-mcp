@@ -49,14 +49,19 @@ export class CreateProjectTool extends BaseTool {
       
       // Clear project cache since we're creating
       this.cache.clear('projects');
-      
+
       // Execute create script
-      const script = this.omniAutomation.buildScript(CREATE_PROJECT_SCRIPT, { 
+      const script = this.omniAutomation.buildScript(CREATE_PROJECT_SCRIPT, {
         name,
         options
       });
       const result = await this.omniAutomation.execute<any>(script);
-      
+
+      // Invalidate resource cache after successful creation
+      if (!result.error) {
+        this.resourceManager?.invalidate();
+      }
+
       return result;
     } catch (error) {
       return this.handleError(error);

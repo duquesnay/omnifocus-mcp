@@ -68,14 +68,19 @@ export class UpdateProjectTool extends BaseTool {
       
       // Clear project cache since we're updating
       this.cache.clear('projects');
-      
+
       // Execute update script
-      const script = this.omniAutomation.buildScript(UPDATE_PROJECT_SCRIPT, { 
+      const script = this.omniAutomation.buildScript(UPDATE_PROJECT_SCRIPT, {
         projectId,
         updates
       });
       const result = await this.omniAutomation.execute<any>(script);
-      
+
+      // Invalidate resource cache after successful update
+      if (!result.error) {
+        this.resourceManager?.invalidate();
+      }
+
       return result;
     } catch (error) {
       return this.handleError(error);
