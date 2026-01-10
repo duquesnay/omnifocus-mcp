@@ -358,8 +358,7 @@ export const COMPLETE_PROJECT_SCRIPT = `
     }
     
     // Complete the project
-    targetProject.status = app.Project.Status.done;
-    targetProject.completionDate = new Date();
+    targetProject.markComplete();
     
     return JSON.stringify({
       success: true,
@@ -419,8 +418,8 @@ export const DELETE_PROJECT_SCRIPT = `
       }
     }
     
-    // Delete the project
-    targetProject.remove();
+    // Delete the project using JXA app.delete method
+    app.delete(targetProject);
     
     return JSON.stringify({
       success: true,
