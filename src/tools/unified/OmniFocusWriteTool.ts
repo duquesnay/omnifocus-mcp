@@ -104,6 +104,12 @@ BATCH OPERATIONS:
 - returnMapping: true (returns tempId → realId map)
 - stopOnError: true (halt on first failure)
 
+BATCH SUBTASK EXAMPLE:
+{ "mutation": { "operation": "batch", "operations": [
+  { "operation": "create", "target": "task", "data": { "name": "Parent", "tempId": "p1", "project": "My Project" } },
+  { "operation": "create", "target": "task", "data": { "name": "Child", "tempId": "c1", "parentTempId": "p1" } }
+] } }
+
 TAG OPERATIONS:
 - tags: [...] - Replace all tags
 - addTags: [...] - Add to existing
@@ -125,6 +131,13 @@ DATE FORMATS:
 - Clear date: null or clearDueDate/clearDeferDate/clearPlannedDate: true
 
 MOVE TO INBOX: Set project: null
+
+REPETITION RULES (in data.repetitionRule):
+- frequency: "daily"|"weekly"|"monthly"|"yearly" (required)
+- interval: number (default 1)
+- method: "fixed"|"due-after-completion"|"defer-after-completion" (default "fixed")
+- daysOfWeek: [{ day: "SU"|"MO"|"TU"|"WE"|"TH"|"FR"|"SA", position?: number }] (for weekly)
+- daysOfMonth: [1-31] (for monthly, -1 = last day)
 
 SAFETY:
 - Delete is permanent - confirm with user first
@@ -1430,6 +1443,13 @@ SAFETY:
       let autoTempIdCounter = 0;
       const items: BatchItem[] = createOps.map((op) => {
         const item = { type: op.target as 'task' | 'project', ...op.data } as BatchItem;
+        // Accept tempId/parentTempId at operation level too (LLMs may place them here)
+        if ((op as Record<string, unknown>).tempId && !item.tempId) {
+          item.tempId = (op as Record<string, unknown>).tempId as string;
+        }
+        if ((op as Record<string, unknown>).parentTempId && !item.parentTempId) {
+          item.parentTempId = (op as Record<string, unknown>).parentTempId as string;
+        }
         if (!item.tempId) {
           item.tempId = `auto_temp_${++autoTempIdCounter}`;
         }

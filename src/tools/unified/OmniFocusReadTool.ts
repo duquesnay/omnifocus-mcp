@@ -186,6 +186,10 @@ RESPONSE CONTROL:
 - limit/offset: Pagination (default limit: 25, max: 500)
 - countOnly: true returns only count (33x faster for "how many" questions) — tasks only
 
+COMPLETED TASKS:
+- Task queries: Use filters: { status: "completed" } or filters: { completed: true }
+- Export only: includeCompleted parameter applies to export operations, not task queries
+
 PERFORMANCE:
 - Use countOnly for counting questions
 - Use fields to select only needed data
@@ -253,7 +257,10 @@ PERFORMANCE:
             format: { type: 'string', enum: ['json', 'csv', 'markdown'] },
             exportFields: { type: 'array', items: { type: 'string' } },
             outputDirectory: { type: 'string' },
-            includeCompleted: { type: 'boolean' },
+            includeCompleted: {
+              type: 'boolean',
+              description: 'Export only. For task queries use filters: { status: "completed" }',
+            },
           },
           required: ['type'],
         },
