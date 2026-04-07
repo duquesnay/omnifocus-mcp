@@ -1444,11 +1444,12 @@ SAFETY:
       const items: BatchItem[] = createOps.map((op) => {
         const item = { type: op.target as 'task' | 'project', ...op.data } as BatchItem;
         // Accept tempId/parentTempId at operation level too (LLMs may place them here)
-        if ((op as Record<string, unknown>).tempId && !item.tempId) {
-          item.tempId = (op as Record<string, unknown>).tempId as string;
+        const opRaw = op as unknown as Record<string, unknown>;
+        if (opRaw.tempId && !item.tempId) {
+          item.tempId = opRaw.tempId as string;
         }
-        if ((op as Record<string, unknown>).parentTempId && !item.parentTempId) {
-          item.parentTempId = (op as Record<string, unknown>).parentTempId as string;
+        if (opRaw.parentTempId && !item.parentTempId) {
+          item.parentTempId = opRaw.parentTempId as string;
         }
         if (!item.tempId) {
           item.tempId = `auto_temp_${++autoTempIdCounter}`;
