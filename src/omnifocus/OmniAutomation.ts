@@ -12,7 +12,7 @@ export class OmniAutomationError extends Error {
 
 export class OmniAutomation {
   private readonly maxScriptSize = 100000; // 100KB limit for scripts
-  private readonly timeout = 30000; // 30 second timeout
+  private readonly timeout = 90000; // 90 second timeout (1500+ tasks need time)
 
   public async execute<T = any>(script: string): Promise<T> {
     if (script.length > this.maxScriptSize) {

@@ -1,6 +1,6 @@
 import { BaseTool } from '../base.js';
 import { TaskUpdate } from '../../omnifocus/types.js';
-import { UPDATE_TASK_SCRIPT_SIMPLE } from '../../omnifocus/scripts/tasks.js';
+import { UPDATE_TASK_SCRIPT } from '../../omnifocus/scripts/tasks.js';
 
 export class UpdateTaskTool extends BaseTool {
   name = 'update_task';
@@ -54,32 +54,24 @@ export class UpdateTaskTool extends BaseTool {
   async execute(args: { taskId: string } & TaskUpdate): Promise<any> {
     try {
       const { taskId, ...updates } = args;
-      
-      // Temporarily disable cache invalidation to test freeze issue
-      // this.cache.invalidate('tasks');
-      
-      // Filter updates to only include what the simplified script can handle
-      const safeUpdates = {
-        ...(updates.name !== undefined && { name: updates.name }),
-        ...(updates.note !== undefined && { note: updates.note }),
-        ...(updates.flagged !== undefined && { flagged: updates.flagged }),
-        ...(updates.projectId !== undefined && { projectId: updates.projectId })
-      };
-      
-      const script = this.omniAutomation.buildScript(UPDATE_TASK_SCRIPT_SIMPLE, { 
+
+      // Invalidate cache so reads after the update see fresh state
+      this.cache.invalidate('tasks');
+
+      // Pass ALL update fields through. The full UPDATE_TASK_SCRIPT handles
+      // name/note/flagged/dueDate/deferDate/estimatedMinutes/tags/projectId
+      // and verifies via cross-read so silent JXA no-ops surface as errors.
+      const script = this.omniAutomation.buildScript(UPDATE_TASK_SCRIPT, {
         taskId,
-        updates: safeUpdates,
+        updates,
       });
-      
+
       const result = await this.omniAutomation.execute(script);
-      
-      if (result.error) {
+
+      if (result && result.error) {
         return result;
       }
-      
-      // Temporarily disable logging to test freeze issue
-      // this.logger.info(`Updated task: ${taskId}`);
-      
+
       // Parse the JSON result since the script returns a JSON string
       let parsedResult;
       try {
@@ -91,7 +83,12 @@ export class UpdateTaskTool extends BaseTool {
           message: 'Failed to parse task update response'
         };
       }
-      
+
+      // Surface verification failures from the script as errors instead of fake success
+      if (parsedResult && parsedResult.error) {
+        return parsedResult;
+      }
+
       return {
         success: true,
         task: parsedResult,
