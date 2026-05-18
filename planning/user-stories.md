@@ -744,6 +744,33 @@ AI assistants need efficient, cached, and well-structured access to OmniFocus da
 
 ---
 
+## Epic 10: Link-Based Task Discovery
+
+### User Story: FEAT2 - Find Task by OmniFocus Link
+
+**As a** user sharing task context with Claude
+**I want to** paste an OmniFocus task link and have Claude locate the specific task
+**So that** I can quickly reference tasks from OmniFocus without manual searching
+
+**Acceptance Criteria**:
+- [ ] Parse OmniFocus URL scheme links (omnifocus:///task/{taskId})
+- [ ] Extract task ID from link format
+- [ ] Retrieve task details using extracted ID
+- [ ] Handle invalid/malformed links with clear error messages
+- [ ] Support both conversation paste and future iOS/desktop share workflows
+- [ ] Return full task context (name, notes, project, tags, dates)
+- [ ] Cache task data per standard caching rules
+
+**Technical Notes**:
+- OmniFocus link format: `omnifocus:///task/{taskId}` (URL-encoded)
+- May need to handle multiple link formats (v3 vs v4, macOS vs iOS)
+- Consider adding tool: `find_task_by_link` in addition to ID-based lookup
+- Future enhancement: Support project links (`omnifocus:///project/{projectId}`)
+
+**Status**: ⏳ Planned
+
+---
+
 ## Bug Reports
 
 ### Bug 1: Empty Results for Active Project Filter
@@ -955,3 +982,63 @@ AI assistants need efficient, cached, and well-structured access to OmniFocus da
 - **Efficiency**: 80% reduction in tool calls for read operations
 - **Adoption**: Resources become primary data access method
 - **Developer Experience**: Clear docs enable quick integration
+
+---
+
+## Bug Fixes
+
+### BUG5: User creates new tags successfully
+
+**User**: Task manager organizing tasks with custom tags
+**Outcome**: Tag creation completes without errors and tag becomes immediately available
+**Context**: Current `app.Tag({name: tagName})` API call fails with "Can't convert types" error, preventing any tag creation
+
+**Acceptance Criteria**:
+- Tag creation request returns success (not error JSON)
+- Created tag appears in list_tags results immediately
+- Created tag can be applied to tasks without errors
+- Error message displays clearly if tag name already exists
+- Cache invalidates only after successful creation
+
+**Implementation Notes**:
+- Research correct OmniFocus JXA API for tag creation
+- Likely `doc.tags.push(Tag.make({name: tagName}))` or similar
+- Test with MCP Inspector to verify protocol-level success
+
+**Source**: USER_REPORT (2025-11-19) - "Error adding tags: Error: Can't convert types"
+
+---
+
+## Technical Capabilities
+
+### QUAL1: Developer trusts operations fail visibly (not silently)
+
+**User**: Developer implementing or debugging MCP tools
+**Outcome**: Failed operations throw exceptions immediately rather than returning error JSON that gets ignored
+**Context**: Current pattern allows operations to "succeed" with error JSON payload, leading to cache invalidation before validation, silent failures, and half-completed operations
+
+**Acceptance Criteria**:
+- All tool operations validate `result.success === true` before returning
+- Failed operations throw `McpError` with appropriate error codes
+- Cache invalidation happens ONLY after operation success validation
+- Integration tests verify operations fail fast on error conditions
+- No tool returns `{error: true, message: "..."}` without throwing exception
+
+**Implementation Notes**:
+- Pattern to enforce in all tools:
+  ```typescript
+  const result = await this.omniAutomation.execute(script);
+  if (result.error || !result.success) {
+    throw new McpError(ErrorCode.InternalError, result.message);
+  }
+  // Only invalidate cache AFTER validation
+  this.cache.clear('tags');
+  return result;
+  ```
+- Review all 15+ tools for this pattern
+- Add integration tests for failure scenarios
+- Applies to: tasks, projects, tags, analytics tools
+
+**Source**: QUALITY_REVIEW (2025-11-19) - Systemic pattern of silent failures across all tool operations
+
+---

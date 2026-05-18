@@ -3,7 +3,7 @@ import { MANAGE_TAGS_SCRIPT } from '../../omnifocus/scripts/tags.js';
 
 export class ManageTagsTool extends BaseTool {
   name = 'manage_tags';
-  description = 'Create, rename, or delete tags in OmniFocus';
+  description = 'Create, rename, or delete tags';
   
   inputSchema = {
     type: 'object' as const,
@@ -50,16 +50,21 @@ export class ManageTagsTool extends BaseTool {
       
       // Clear tag cache since we're modifying
       this.cache.clear('tags');
-      
+
       // Execute script
-      const script = this.omniAutomation.buildScript(MANAGE_TAGS_SCRIPT, { 
+      const script = this.omniAutomation.buildScript(MANAGE_TAGS_SCRIPT, {
         action,
         tagName,
         newName,
         targetTag
       });
       const result = await this.omniAutomation.execute<any>(script);
-      
+
+      // Invalidate resource cache after successful modification
+      if (!result.error) {
+        this.resourceManager?.invalidate();
+      }
+
       return result;
     } catch (error) {
       return this.handleError(error);

@@ -2,7 +2,7 @@
   "mcpServers": {
     "omnifocus": {
       "command": "node",
-      "args": ["/Users/guillaume/Dev/tools/omnifocus-mcp/dist/index.js"],
+      "args": ["/Users/guillaume/dev/tools/omnifocus-mcp/dist/index.js"],
       "env": {
         "LOG_LEVEL": "info"
       }

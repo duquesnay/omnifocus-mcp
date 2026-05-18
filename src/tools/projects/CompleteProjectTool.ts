@@ -3,7 +3,7 @@ import { COMPLETE_PROJECT_SCRIPT } from '../../omnifocus/scripts/projects.js';
 
 export class CompleteProjectTool extends BaseTool {
   name = 'complete_project';
-  description = 'Mark a project as completed in OmniFocus';
+  description = 'Mark a project as completed';
   
   inputSchema = {
     type: 'object' as const,
@@ -30,14 +30,19 @@ export class CompleteProjectTool extends BaseTool {
       
       // Clear project cache since we're completing
       this.cache.clear('projects');
-      
+
       // Execute complete script
-      const script = this.omniAutomation.buildScript(COMPLETE_PROJECT_SCRIPT, { 
+      const script = this.omniAutomation.buildScript(COMPLETE_PROJECT_SCRIPT, {
         projectId,
         completeAllTasks
       });
       const result = await this.omniAutomation.execute<any>(script);
-      
+
+      // Invalidate resource cache after successful completion
+      if (!result.error) {
+        this.resourceManager?.invalidate();
+      }
+
       return result;
     } catch (error) {
       return this.handleError(error);

@@ -3,7 +3,7 @@ import { DELETE_TASK_SCRIPT, DELETE_TASK_OMNI_SCRIPT } from '../../omnifocus/scr
 
 export class DeleteTaskTool extends BaseTool {
   name = 'delete_task';
-  description = 'Delete (drop) a task in OmniFocus';
+  description = 'Delete (drop) a task';
   
   inputSchema = {
     type: 'object' as const,

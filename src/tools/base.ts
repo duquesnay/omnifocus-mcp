@@ -1,14 +1,17 @@
 import { CacheManager } from '../cache/CacheManager.js';
 import { OmniAutomation } from '../omnifocus/OmniAutomation.js';
 import { createLogger, Logger } from '../utils/logger.js';
+import type { ResourceManager } from '../resources/ResourceManager.js';
 
 export abstract class BaseTool {
   protected omniAutomation: OmniAutomation;
   protected cache: CacheManager;
   protected logger: Logger;
+  protected resourceManager?: ResourceManager;
 
-  constructor(cache: CacheManager) {
+  constructor(cache: CacheManager, resourceManager?: ResourceManager) {
     this.cache = cache;
+    this.resourceManager = resourceManager;
     this.omniAutomation = new OmniAutomation();
     this.logger = createLogger(this.constructor.name);
   }

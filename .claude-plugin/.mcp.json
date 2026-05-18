@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "omnifocus": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--node-options=--no-warnings",
+        "/Users/guillaume/dev/tools/mcp/omnifocus-mcp/dist/index.js"
+      ],
+      "env": {
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

@@ -17,6 +17,7 @@ export class CacheManager {
     projects: { ttl: 600 * 1000 },    // 10 minutes (was 5 minutes)
     analytics: { ttl: 3600 * 1000 },  // 1 hour
     tags: { ttl: 1200 * 1000 },       // 20 minutes (was 10 minutes)
+    resources: { ttl: 300 * 1000 },   // 5 minutes
   };
 
   constructor(config?: Partial<CacheConfig>) {

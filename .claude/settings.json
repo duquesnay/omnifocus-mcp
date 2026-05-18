@@ -4,5 +4,18 @@
       "Bash(npm:*)"
     ],
     "deny": []
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$CLAUDE_CODE_REMOTE\" \\!= \"true\" ] && exit 0; [ -d /tmp/claude_ref ] || git clone --depth 1 https://x-access-token:${GH_TOKEN}@github.com/duquesnay/claude-memories.git /tmp/claude_ref >&2; /tmp/claude_ref/scripts/remote-bootstrap.sh"
+          }
+        ]
+      }
+    ]
   }
 }
