@@ -262,11 +262,33 @@ export const CREATE_TASK_SCRIPT = `
             let projAfterId = null;
             try { projAfterId = projAfter ? projAfter.id() : null; } catch (e) {}
             if (!projAfter || projAfterId !== taskData.projectId) {
+              // JXA assignedContainer is structurally broken on OF 4.6 (setter accepted,
+              // move not applied — proven live 2026-07-04). Real fix: OmniJS moveTasks()
+              // via the Omni Automation bridge. IDs are interpolated with JSON.stringify
+              // so quotes/backslashes in identifiers cannot break out of the snippet.
+              const omniJs = "(function(){" +
+                " var t = Task.byIdentifier(" + JSON.stringify(taskId) + ");" +
+                " var p = null;" +
+                " try { p = Project.byIdentifier(" + JSON.stringify(taskData.projectId) + "); } catch (e) { p = null; }" +
+                " if (!p) { p = flattenedProjects.find(function(pr) { return pr.id.primaryKey === " + JSON.stringify(taskData.projectId) + "; }) || null; }" +
+                " if (!t || !p) { return 'omnijs-move: task or project not found'; }" +
+                " moveTasks([t], p);" +
+                " return 'omnijs-move: ok';" +
+                "})()";
+              try { app.evaluateJavascript(omniJs); } catch (e) {}
+              // Re-verify via the ALREADY HELD task reference — byId lookups can be
+              // stale directly after moveTasks() (see CLAUDE.md JXA gotchas).
+              projAfter = null;
+              try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+              projAfterId = null;
+              try { projAfterId = projAfter ? projAfter.id() : null; } catch (e) {}
+            }
+            if (!projAfter || projAfterId !== taskData.projectId) {
               return JSON.stringify({
                 error: true,
                 message: "Task created but project assignment did not persist. Task is in inbox. Expected project '" + taskData.projectId + "'.",
                 taskId: task.id(),
-                hint: "JXA assignedContainer setter accepted but OmniFocus did not honor the assignment."
+                hint: "JXA assignedContainer setter accepted but OmniFocus did not honor the assignment, and the OmniJS moveTasks() fallback did not verify either."
               });
             }
             assignedProjectName = projAfter.name();
@@ -581,12 +603,33 @@ export const UPDATE_TASK_SCRIPT = `
         // Verify: containingProject() id should match
         let projAfter = null;
         try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
-        const projAfterId = safeId(projAfter);
+        let projAfterId = safeId(projAfter);
+        if (!projAfter || projAfterId !== updates.projectId) {
+          // JXA assignedContainer is structurally broken on OF 4.6 (setter accepted,
+          // move not applied — proven live 2026-07-04). Real fix: OmniJS moveTasks()
+          // via the Omni Automation bridge. IDs are interpolated with JSON.stringify
+          // so quotes/backslashes in identifiers cannot break out of the snippet.
+          const omniJs = "(function(){" +
+            " var t = Task.byIdentifier(" + JSON.stringify(taskId) + ");" +
+            " var p = null;" +
+            " try { p = Project.byIdentifier(" + JSON.stringify(updates.projectId) + "); } catch (e) { p = null; }" +
+            " if (!p) { p = flattenedProjects.find(function(pr) { return pr.id.primaryKey === " + JSON.stringify(updates.projectId) + "; }) || null; }" +
+            " if (!t || !p) { return 'omnijs-move: task or project not found'; }" +
+            " moveTasks([t], p);" +
+            " return 'omnijs-move: ok';" +
+            "})()";
+          try { app.evaluateJavascript(omniJs); } catch (e) {}
+          // Re-verify via the ALREADY HELD task reference — byId lookups can be
+          // stale directly after moveTasks() (see CLAUDE.md JXA gotchas).
+          projAfter = null;
+          try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+          projAfterId = safeId(projAfter);
+        }
         if (projAfter && projAfterId === updates.projectId) {
           changes.projectId = updates.projectId;
           changes.projectName = projAfter.name();
         } else {
-          verifyFailures.push('projectId (containingProject id is ' + projAfterId + ', expected ' + updates.projectId + ')');
+          verifyFailures.push('projectId (containingProject id is ' + projAfterId + ', expected ' + updates.projectId + '; OmniJS moveTasks fallback did not verify either)');
         }
       }
     }
