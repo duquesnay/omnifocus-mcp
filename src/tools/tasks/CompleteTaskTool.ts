@@ -25,7 +25,7 @@ export class CompleteTaskTool extends BaseTool {
       // Try JXA first, fall back to URL scheme if access denied
       try {
         const script = this.omniAutomation.buildScript(COMPLETE_TASK_SCRIPT, args);
-        const result = await this.omniAutomation.execute(script);
+        const result = await this.omniAutomation.executeWrite(script);
         
         if (result.error) {
           // If error contains "access not allowed" (en/de), use URL scheme

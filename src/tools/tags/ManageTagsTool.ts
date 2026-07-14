@@ -58,7 +58,7 @@ export class ManageTagsTool extends BaseTool {
         newName,
         targetTag
       });
-      const result = await this.omniAutomation.execute<any>(script);
+      const result = await this.omniAutomation.executeWrite<any>(script);
       
       return result;
     } catch (error) {

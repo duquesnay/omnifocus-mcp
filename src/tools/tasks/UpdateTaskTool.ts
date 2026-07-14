@@ -66,7 +66,7 @@ export class UpdateTaskTool extends BaseTool {
         updates,
       });
 
-      const result = await this.omniAutomation.execute(script);
+      const result = await this.omniAutomation.executeWrite(script);
 
       if (result && result.error) {
         return result;

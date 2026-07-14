@@ -261,6 +261,7 @@ export const CREATE_TASK_SCRIPT = `
             try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
             let projAfterId = null;
             try { projAfterId = projAfter ? projAfter.id() : null; } catch (e) {}
+            let freshProjectId = null;
             if (!projAfter || projAfterId !== taskData.projectId) {
               // JXA assignedContainer is structurally broken on OF 4.6 (setter accepted,
               // move not applied — proven live 2026-07-04). Real fix: OmniJS moveTasks()
@@ -282,8 +283,39 @@ export const CREATE_TASK_SCRIPT = `
               try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
               projAfterId = null;
               try { projAfterId = projAfter ? projAfter.id() : null; } catch (e) {}
+
+              // Bounded retry for concurrent writers: OmniFocus's OmniJS bridge
+              // serializes moveTasks() calls on the app's main thread, so under
+              // concurrent load a sibling writer can still be mid-commit when we
+              // read back here. Sleep briefly, then re-check both the held handle
+              // (which may simply have been read too early) AND a FRESH re-fetch
+              // by ID via evaluateJavascript / Task.byIdentifier(), since that
+              // reflects committed document state rather than a JXA object graph
+              // that (per the comment above) can go stale immediately after
+              // moveTasks() runs.
+              for (let attempt = 0; attempt < 2 && projAfterId !== taskData.projectId && freshProjectId !== taskData.projectId; attempt++) {
+                try { $.NSThread.sleepForTimeInterval(0.2); } catch (e) {
+                  const sleepStart = Date.now();
+                  while (Date.now() - sleepStart < 200) {}
+                }
+                projAfter = null;
+                try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+                projAfterId = null;
+                try { projAfterId = projAfter ? projAfter.id() : null; } catch (e) {}
+                if (projAfterId === taskData.projectId) break;
+                const freshCheckJs = "(function(){" +
+                  " var tt = Task.byIdentifier(" + JSON.stringify(taskId) + ");" +
+                  " if (!tt) return null;" +
+                  " var cp = tt.containingProject;" +
+                  " if (!cp) return null;" +
+                  " return cp.id.primaryKey;" +
+                  "})()";
+                try { freshProjectId = app.evaluateJavascript(freshCheckJs); } catch (e) { freshProjectId = null; }
+              }
             }
-            if (!projAfter || projAfterId !== taskData.projectId) {
+            // Accept success if EITHER the held handle OR the fresh re-fetch shows
+            // the correct destination project id.
+            if (!(projAfter && projAfterId === taskData.projectId) && freshProjectId !== taskData.projectId) {
               return JSON.stringify({
                 error: true,
                 message: "Task created but project assignment did not persist. Task is in inbox. Expected project '" + taskData.projectId + "'.",
@@ -291,7 +323,7 @@ export const CREATE_TASK_SCRIPT = `
                 hint: "JXA assignedContainer setter accepted but OmniFocus did not honor the assignment, and the OmniJS moveTasks() fallback did not verify either."
               });
             }
-            assignedProjectName = projAfter.name();
+            assignedProjectName = (projAfter && projAfterId === taskData.projectId) ? projAfter.name() : assignedProject.name();
           }
 
           // Add tags to the created task
@@ -604,6 +636,7 @@ export const UPDATE_TASK_SCRIPT = `
         let projAfter = null;
         try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
         let projAfterId = safeId(projAfter);
+        let freshProjectId = null;
         if (!projAfter || projAfterId !== updates.projectId) {
           // JXA assignedContainer is structurally broken on OF 4.6 (setter accepted,
           // move not applied — proven live 2026-07-04). Real fix: OmniJS moveTasks()
@@ -624,10 +657,43 @@ export const UPDATE_TASK_SCRIPT = `
           projAfter = null;
           try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
           projAfterId = safeId(projAfter);
+
+          // Bounded retry for concurrent writers: OmniFocus's OmniJS bridge
+          // serializes moveTasks() calls on the app's main thread, so under
+          // concurrent load a sibling writer can still be mid-commit when we
+          // read back here. Sleep briefly, then re-check both the held handle
+          // (which may simply have been read too early) AND a FRESH re-fetch
+          // by ID via evaluateJavascript / Task.byIdentifier(), since that
+          // reflects committed document state rather than a JXA object graph
+          // that (per the comment above) can go stale immediately after
+          // moveTasks() runs.
+          for (let attempt = 0; attempt < 2 && projAfterId !== updates.projectId && freshProjectId !== updates.projectId; attempt++) {
+            try { $.NSThread.sleepForTimeInterval(0.2); } catch (e) {
+              const sleepStart = Date.now();
+              while (Date.now() - sleepStart < 200) {}
+            }
+            projAfter = null;
+            try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+            projAfterId = safeId(projAfter);
+            if (projAfterId === updates.projectId) break;
+            const freshCheckJs = "(function(){" +
+              " var tt = Task.byIdentifier(" + JSON.stringify(taskId) + ");" +
+              " if (!tt) return null;" +
+              " var cp = tt.containingProject;" +
+              " if (!cp) return null;" +
+              " return cp.id.primaryKey;" +
+              "})()";
+            try { freshProjectId = app.evaluateJavascript(freshCheckJs); } catch (e) { freshProjectId = null; }
+          }
         }
+        // Accept success if EITHER the held handle OR the fresh re-fetch shows
+        // the correct destination project id.
         if (projAfter && projAfterId === updates.projectId) {
           changes.projectId = updates.projectId;
           changes.projectName = projAfter.name();
+        } else if (freshProjectId === updates.projectId) {
+          changes.projectId = updates.projectId;
+          changes.projectName = project.name();
         } else {
           verifyFailures.push('projectId (containingProject id is ' + projAfterId + ', expected ' + updates.projectId + '; OmniJS moveTasks fallback did not verify either)');
         }

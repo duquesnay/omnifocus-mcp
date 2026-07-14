@@ -36,7 +36,7 @@ export class DeleteProjectTool extends BaseTool {
         projectId,
         deleteTasks
       });
-      const result = await this.omniAutomation.execute<any>(script);
+      const result = await this.omniAutomation.executeWrite<any>(script);
       
       return result;
     } catch (error) {
