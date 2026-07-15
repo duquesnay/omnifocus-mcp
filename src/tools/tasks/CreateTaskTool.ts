@@ -53,7 +53,7 @@ export class CreateTaskTool extends BaseTool {
       this.cache.invalidate('tasks');
       
       const script = this.omniAutomation.buildScript(CREATE_TASK_SCRIPT, { taskData: args });
-      const result = await this.omniAutomation.execute(script);
+      const result = await this.omniAutomation.executeWrite(script);
       
       if (result.error) {
         return result;

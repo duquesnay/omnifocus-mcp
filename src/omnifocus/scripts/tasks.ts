@@ -226,10 +226,17 @@ export const CREATE_TASK_SCRIPT = `
           if (taskData.projectId) {
             const projects = doc.flattenedProjects();
             let projectFound = false;
+            let assignedProject = null;
             for (let j = 0; j < projects.length; j++) {
-              if (projects[j].id() === taskData.projectId) {
+              // Prefer id() but fall back to id.primaryKey for JXA tolerance
+              let pid = null;
+              try { pid = projects[j].id(); } catch (e) {}
+              if (pid !== taskData.projectId) {
+                try { pid = projects[j].id.primaryKey; } catch (e) {}
+              }
+              if (pid === taskData.projectId) {
                 task.assignedContainer = projects[j];
-                assignedProjectName = projects[j].name();
+                assignedProject = projects[j];
                 projectFound = true;
                 break;
               }
@@ -248,6 +255,75 @@ export const CREATE_TASK_SCRIPT = `
                 message: errorMessage
               });
             }
+
+            // Verify the assignment landed (silent-fail prone on JXA)
+            let projAfter = null;
+            try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+            let projAfterId = null;
+            try { projAfterId = projAfter ? projAfter.id() : null; } catch (e) {}
+            let freshProjectId = null;
+            if (!projAfter || projAfterId !== taskData.projectId) {
+              // JXA assignedContainer is structurally broken on OF 4.6 (setter accepted,
+              // move not applied — proven live 2026-07-04). Real fix: OmniJS moveTasks()
+              // via the Omni Automation bridge. IDs are interpolated with JSON.stringify
+              // so quotes/backslashes in identifiers cannot break out of the snippet.
+              const omniJs = "(function(){" +
+                " var t = Task.byIdentifier(" + JSON.stringify(taskId) + ");" +
+                " var p = null;" +
+                " try { p = Project.byIdentifier(" + JSON.stringify(taskData.projectId) + "); } catch (e) { p = null; }" +
+                " if (!p) { p = flattenedProjects.find(function(pr) { return pr.id.primaryKey === " + JSON.stringify(taskData.projectId) + "; }) || null; }" +
+                " if (!t || !p) { return 'omnijs-move: task or project not found'; }" +
+                " moveTasks([t], p);" +
+                " return 'omnijs-move: ok';" +
+                "})()";
+              try { app.evaluateJavascript(omniJs); } catch (e) {}
+              // Re-verify via the ALREADY HELD task reference — byId lookups can be
+              // stale directly after moveTasks() (see CLAUDE.md JXA gotchas).
+              projAfter = null;
+              try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+              projAfterId = null;
+              try { projAfterId = projAfter ? projAfter.id() : null; } catch (e) {}
+
+              // Bounded retry for concurrent writers: OmniFocus's OmniJS bridge
+              // serializes moveTasks() calls on the app's main thread, so under
+              // concurrent load a sibling writer can still be mid-commit when we
+              // read back here. Sleep briefly, then re-check both the held handle
+              // (which may simply have been read too early) AND a FRESH re-fetch
+              // by ID via evaluateJavascript / Task.byIdentifier(), since that
+              // reflects committed document state rather than a JXA object graph
+              // that (per the comment above) can go stale immediately after
+              // moveTasks() runs.
+              for (let attempt = 0; attempt < 2 && projAfterId !== taskData.projectId && freshProjectId !== taskData.projectId; attempt++) {
+                try { $.NSThread.sleepForTimeInterval(0.2); } catch (e) {
+                  const sleepStart = Date.now();
+                  while (Date.now() - sleepStart < 200) {}
+                }
+                projAfter = null;
+                try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+                projAfterId = null;
+                try { projAfterId = projAfter ? projAfter.id() : null; } catch (e) {}
+                if (projAfterId === taskData.projectId) break;
+                const freshCheckJs = "(function(){" +
+                  " var tt = Task.byIdentifier(" + JSON.stringify(taskId) + ");" +
+                  " if (!tt) return null;" +
+                  " var cp = tt.containingProject;" +
+                  " if (!cp) return null;" +
+                  " return cp.id.primaryKey;" +
+                  "})()";
+                try { freshProjectId = app.evaluateJavascript(freshCheckJs); } catch (e) { freshProjectId = null; }
+              }
+            }
+            // Accept success if EITHER the held handle OR the fresh re-fetch shows
+            // the correct destination project id.
+            if (!(projAfter && projAfterId === taskData.projectId) && freshProjectId !== taskData.projectId) {
+              return JSON.stringify({
+                error: true,
+                message: "Task created but project assignment did not persist. Task is in inbox. Expected project '" + taskData.projectId + "'.",
+                taskId: task.id(),
+                hint: "JXA assignedContainer setter accepted but OmniFocus did not honor the assignment, and the OmniJS moveTasks() fallback did not verify either."
+              });
+            }
+            assignedProjectName = (projAfter && projAfterId === taskData.projectId) ? projAfter.name() : assignedProject.name();
           }
 
           // Add tags to the created task
@@ -395,86 +471,244 @@ export const UPDATE_TASK_SCRIPT_SIMPLE = `
   }
 `;
 
+// UPDATE_TASK_SCRIPT
+// Verifies every property write via cross-read so silent JXA no-ops on
+// dueDate / deferDate / projectId surface as structured errors rather than
+// false-positive success. JXA on German macOS occasionally accepts a Date
+// assignment without persisting it; the verify-after-set pattern catches that.
 export const UPDATE_TASK_SCRIPT = `
   const taskId = {{taskId}};
   const updates = {{updates}};
-  
-  try {
-    // Find task by ID
+
+  // Helpers (kept inside the script template since this runs in osascript JXA)
+  function safeId(obj) {
+    try {
+      if (obj && obj.id && typeof obj.id === 'function') return obj.id();
+    } catch (e) {}
+    try {
+      if (obj && obj.id && obj.id.primaryKey) return obj.id.primaryKey;
+    } catch (e) {}
+    return null;
+  }
+
+  function findTaskById(id) {
     const tasks = doc.flattenedTasks();
-    let task = null;
     for (let i = 0; i < tasks.length; i++) {
-      if (tasks[i].id() === taskId) {
-        task = tasks[i];
-        break;
-      }
+      if (safeId(tasks[i]) === id) return tasks[i];
     }
+    return null;
+  }
+
+  function findProjectById(id) {
+    const projects = doc.flattenedProjects();
+    for (let i = 0; i < projects.length; i++) {
+      if (safeId(projects[i]) === id) return projects[i];
+    }
+    return null;
+  }
+
+  function dateEquals(a, b) {
+    // OmniFocus stores dates with second-level granularity. ISO inputs from
+    // callers usually carry milliseconds — compare floor-to-second so a
+    // legitimate write of "...:33.741Z" matches the persisted "...:33.000Z"
+    // without flagging it as a silent failure.
+    if (a === null && b === null) return true;
+    if (a === null || b === null) return false;
+    try {
+      const ta = Math.floor(new Date(a).getTime() / 1000);
+      const tb = Math.floor(new Date(b).getTime() / 1000);
+      return ta === tb;
+    } catch (e) { return false; }
+  }
+
+  try {
+    const task = findTaskById(taskId);
     if (!task) {
       return JSON.stringify({ error: true, message: 'Task not found' });
     }
-    
-    // Apply updates using property setters
-    if (updates.name !== undefined) task.name = updates.name;
-    if (updates.note !== undefined) task.note = updates.note;
-    if (updates.flagged !== undefined) task.flagged = updates.flagged;
+
+    const verifyFailures = [];
+    const changes = {};
+
+    // ---- name ----
+    if (updates.name !== undefined) {
+      task.name = updates.name;
+      const after = task.name();
+      if (after === updates.name) {
+        changes.name = updates.name;
+      } else {
+        verifyFailures.push('name');
+      }
+    }
+
+    // ---- note ----
+    if (updates.note !== undefined) {
+      task.note = updates.note;
+      const after = task.note();
+      if (after === updates.note) {
+        changes.note = updates.note;
+      } else {
+        verifyFailures.push('note');
+      }
+    }
+
+    // ---- flagged ----
+    if (updates.flagged !== undefined) {
+      task.flagged = updates.flagged;
+      const after = task.flagged();
+      if (after === updates.flagged) {
+        changes.flagged = updates.flagged;
+      } else {
+        verifyFailures.push('flagged');
+      }
+    }
+
+    // ---- dueDate (silent-fail prone on JXA) ----
     if (updates.dueDate !== undefined) {
-      task.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
+      const desired = updates.dueDate ? new Date(updates.dueDate) : null;
+      task.dueDate = desired;
+      let after = null;
+      try { after = task.dueDate(); } catch (e) { after = null; }
+      const afterIso = after ? after.toISOString() : null;
+      const desiredIso = desired ? desired.toISOString() : null;
+      if (dateEquals(afterIso, desiredIso)) {
+        changes.dueDate = afterIso;
+      } else {
+        verifyFailures.push('dueDate (got ' + afterIso + ', expected ' + desiredIso + ')');
+      }
     }
+
+    // ---- deferDate (silent-fail prone on JXA) ----
     if (updates.deferDate !== undefined) {
-      task.deferDate = updates.deferDate ? new Date(updates.deferDate) : null;
+      const desired = updates.deferDate ? new Date(updates.deferDate) : null;
+      task.deferDate = desired;
+      let after = null;
+      try { after = task.deferDate(); } catch (e) { after = null; }
+      const afterIso = after ? after.toISOString() : null;
+      const desiredIso = desired ? desired.toISOString() : null;
+      if (dateEquals(afterIso, desiredIso)) {
+        changes.deferDate = afterIso;
+      } else {
+        verifyFailures.push('deferDate (got ' + afterIso + ', expected ' + desiredIso + ')');
+      }
     }
+
+    // ---- estimatedMinutes ----
     if (updates.estimatedMinutes !== undefined) {
       task.estimatedMinutes = updates.estimatedMinutes;
-    }
-    
-    // Update project assignment
-    if (updates.projectId !== undefined) {
-      if (updates.projectId === "") {
-        // Move to inbox - set assignedContainer to null
-        task.assignedContainer = null;
+      let after = null;
+      try { after = task.estimatedMinutes(); } catch (e) { after = null; }
+      // OmniFocus returns null for cleared estimate
+      const matches = (updates.estimatedMinutes === null && (after === null || after === 0))
+        || after === updates.estimatedMinutes;
+      if (matches) {
+        changes.estimatedMinutes = updates.estimatedMinutes;
       } else {
-        // Find and assign project
-        const projects = doc.flattenedProjects();
-        let projectFound = false;
-        for (let i = 0; i < projects.length; i++) {
-          if (projects[i].id() === updates.projectId) {
-            task.assignedContainer = projects[i];
-            projectFound = true;
-            break;
-          }
+        verifyFailures.push('estimatedMinutes (got ' + after + ', expected ' + updates.estimatedMinutes + ')');
+      }
+    }
+
+    // ---- projectId (move task to project / inbox) ----
+    if (updates.projectId !== undefined) {
+      if (updates.projectId === "" || updates.projectId === null) {
+        task.assignedContainer = null;
+        // Verify: containingProject() should be null after move-to-inbox
+        let projAfter = null;
+        try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+        if (projAfter === null) {
+          changes.projectId = "";
+          changes.projectName = "Inbox";
+        } else {
+          verifyFailures.push('projectId (still in project ' + projAfter.name() + ' after move to inbox)');
         }
-        if (!projectFound) {
-          // Check if this looks like Claude Desktop extracted a number from an alphanumeric ID
-          const isNumericOnly = /^\d+$/.test(updates.projectId);
+      } else {
+        const project = findProjectById(updates.projectId);
+        if (!project) {
+          const isNumericOnly = /^\\d+$/.test(updates.projectId);
           let errorMessage = "Project with ID '" + updates.projectId + "' not found";
-          
           if (isNumericOnly) {
             errorMessage += ". CLAUDE DESKTOP BUG DETECTED: Claude Desktop may have extracted numbers from an alphanumeric project ID (e.g., '547' from 'az5Ieo4ip7K'). Please use the list_projects tool to get the correct full project ID and try again.";
           }
-          
-          return JSON.stringify({
-            error: true,
-            message: errorMessage
-          });
+          return JSON.stringify({ error: true, message: errorMessage });
+        }
+        task.assignedContainer = project;
+        // Verify: containingProject() id should match
+        let projAfter = null;
+        try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+        let projAfterId = safeId(projAfter);
+        let freshProjectId = null;
+        if (!projAfter || projAfterId !== updates.projectId) {
+          // JXA assignedContainer is structurally broken on OF 4.6 (setter accepted,
+          // move not applied — proven live 2026-07-04). Real fix: OmniJS moveTasks()
+          // via the Omni Automation bridge. IDs are interpolated with JSON.stringify
+          // so quotes/backslashes in identifiers cannot break out of the snippet.
+          const omniJs = "(function(){" +
+            " var t = Task.byIdentifier(" + JSON.stringify(taskId) + ");" +
+            " var p = null;" +
+            " try { p = Project.byIdentifier(" + JSON.stringify(updates.projectId) + "); } catch (e) { p = null; }" +
+            " if (!p) { p = flattenedProjects.find(function(pr) { return pr.id.primaryKey === " + JSON.stringify(updates.projectId) + "; }) || null; }" +
+            " if (!t || !p) { return 'omnijs-move: task or project not found'; }" +
+            " moveTasks([t], p);" +
+            " return 'omnijs-move: ok';" +
+            "})()";
+          try { app.evaluateJavascript(omniJs); } catch (e) {}
+          // Re-verify via the ALREADY HELD task reference — byId lookups can be
+          // stale directly after moveTasks() (see CLAUDE.md JXA gotchas).
+          projAfter = null;
+          try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+          projAfterId = safeId(projAfter);
+
+          // Bounded retry for concurrent writers: OmniFocus's OmniJS bridge
+          // serializes moveTasks() calls on the app's main thread, so under
+          // concurrent load a sibling writer can still be mid-commit when we
+          // read back here. Sleep briefly, then re-check both the held handle
+          // (which may simply have been read too early) AND a FRESH re-fetch
+          // by ID via evaluateJavascript / Task.byIdentifier(), since that
+          // reflects committed document state rather than a JXA object graph
+          // that (per the comment above) can go stale immediately after
+          // moveTasks() runs.
+          for (let attempt = 0; attempt < 2 && projAfterId !== updates.projectId && freshProjectId !== updates.projectId; attempt++) {
+            try { $.NSThread.sleepForTimeInterval(0.2); } catch (e) {
+              const sleepStart = Date.now();
+              while (Date.now() - sleepStart < 200) {}
+            }
+            projAfter = null;
+            try { projAfter = task.containingProject(); } catch (e) { projAfter = null; }
+            projAfterId = safeId(projAfter);
+            if (projAfterId === updates.projectId) break;
+            const freshCheckJs = "(function(){" +
+              " var tt = Task.byIdentifier(" + JSON.stringify(taskId) + ");" +
+              " if (!tt) return null;" +
+              " var cp = tt.containingProject;" +
+              " if (!cp) return null;" +
+              " return cp.id.primaryKey;" +
+              "})()";
+            try { freshProjectId = app.evaluateJavascript(freshCheckJs); } catch (e) { freshProjectId = null; }
+          }
+        }
+        // Accept success if EITHER the held handle OR the fresh re-fetch shows
+        // the correct destination project id.
+        if (projAfter && projAfterId === updates.projectId) {
+          changes.projectId = updates.projectId;
+          changes.projectName = projAfter.name();
+        } else if (freshProjectId === updates.projectId) {
+          changes.projectId = updates.projectId;
+          changes.projectName = project.name();
+        } else {
+          verifyFailures.push('projectId (containingProject id is ' + projAfterId + ', expected ' + updates.projectId + '; OmniJS moveTasks fallback did not verify either)');
         }
       }
     }
-    
-    // Update tags
+
+    // ---- tags (replace all) ----
     if (updates.tags !== undefined) {
-      // Get current tags
       const currentTags = task.tags();
-      
-      // Remove all existing tags
       if (currentTags.length > 0) {
         task.removeTags(currentTags);
       }
-      
-      // Add new tags
       if (updates.tags.length > 0) {
         const existingTags = doc.flattenedTags();
         const tagsToAdd = [];
-        
         for (const tagName of updates.tags) {
           let found = false;
           for (let i = 0; i < existingTags.length; i++) {
@@ -485,48 +719,44 @@ export const UPDATE_TASK_SCRIPT = `
             }
           }
           if (!found) {
-            // Create new tag
             const newTag = app.Tag({name: tagName});
             doc.tags.push(newTag);
             tagsToAdd.push(newTag);
           }
         }
-        
         if (tagsToAdd.length > 0) {
           task.addTags(tagsToAdd);
         }
       }
-    }
-    
-    // Build response with updated fields
-    const response = {
-      id: task.id(),
-      name: task.name(),
-      updated: true,
-      changes: {}
-    };
-    
-    // Track what was actually changed
-    if (updates.name !== undefined) response.changes.name = updates.name;
-    if (updates.note !== undefined) response.changes.note = updates.note;
-    if (updates.flagged !== undefined) response.changes.flagged = updates.flagged;
-    if (updates.dueDate !== undefined) response.changes.dueDate = updates.dueDate;
-    if (updates.deferDate !== undefined) response.changes.deferDate = updates.deferDate;
-    if (updates.estimatedMinutes !== undefined) response.changes.estimatedMinutes = updates.estimatedMinutes;
-    if (updates.tags !== undefined) response.changes.tags = updates.tags;
-    if (updates.projectId !== undefined) {
-      response.changes.projectId = updates.projectId;
-      if (updates.projectId !== "") {
-        const project = task.containingProject();
-        if (project) {
-          response.changes.projectName = project.name();
-        }
+      // Verify by reading current tag names back
+      const verifyTags = task.tags().map(function(t) { return t.name(); });
+      const desiredSorted = (updates.tags || []).slice().sort();
+      const verifySorted = verifyTags.slice().sort();
+      const tagsEqual = desiredSorted.length === verifySorted.length
+        && desiredSorted.every(function(v, i) { return v === verifySorted[i]; });
+      if (tagsEqual) {
+        changes.tags = verifyTags;
       } else {
-        response.changes.projectName = "Inbox";
+        verifyFailures.push('tags (got ' + JSON.stringify(verifyTags) + ', expected ' + JSON.stringify(updates.tags) + ')');
       }
     }
-    
-    return JSON.stringify(response);
+
+    // If ANY verify-after-set failed, surface a structured error rather than fake success.
+    if (verifyFailures.length > 0) {
+      return JSON.stringify({
+        error: true,
+        message: "Update verification failed for: " + verifyFailures.join('; '),
+        partialChanges: changes,
+        hint: "JXA property setter accepted but OmniFocus did not persist. Date locale or container-type mismatch is the usual cause."
+      });
+    }
+
+    return JSON.stringify({
+      id: safeId(task),
+      name: task.name(),
+      updated: true,
+      changes: changes
+    });
   } catch (error) {
     return JSON.stringify({
       error: true,
@@ -575,36 +805,37 @@ export const COMPLETE_TASK_SCRIPT = `
 `;
 
 // Omni Automation script for completing tasks (bypasses JXA permission issues)
+// IIFE-Wrap: omnijs-run executes the script as top-level; without a function
+// `return` is a SyntaxError. task.id.primaryKey is the Omni Automation API
+// (not task.id() — that's JXA syntax).
 export const COMPLETE_TASK_OMNI_SCRIPT = `
+(() => {
   const taskId = {{taskId}};
-  
+
   try {
-    // Find task by ID using Omni Automation
     const tasks = flattenedTasks;
     let targetTask = null;
-    
+
     tasks.forEach(task => {
-      if (task.id() === taskId) {
+      if (task.id.primaryKey === taskId) {
         targetTask = task;
       }
     });
-    
+
     if (!targetTask) {
       throw new Error('Task not found');
     }
-    
+
     if (targetTask.completed) {
       throw new Error('Task already completed');
     }
-    
-    // Mark as complete using Omni Automation method
+
     targetTask.markComplete();
-    
-    // Return success (URL scheme doesn't return values directly)
     return true;
   } catch (error) {
     throw new Error("Failed to complete task: " + error.toString());
   }
+})();
 `;
 
 export const DELETE_TASK_SCRIPT = `

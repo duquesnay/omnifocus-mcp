@@ -36,7 +36,7 @@ export class CompleteProjectTool extends BaseTool {
         projectId,
         completeAllTasks
       });
-      const result = await this.omniAutomation.execute<any>(script);
+      const result = await this.omniAutomation.executeWrite<any>(script);
       
       return result;
     } catch (error) {

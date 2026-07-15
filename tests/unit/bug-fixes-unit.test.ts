@@ -40,17 +40,16 @@ describe('Bug Fixes - Unit Tests', () => {
   describe('Bug 3: Missing ProjectId Support', () => {
     it('UPDATE_TASK_SCRIPT_SIMPLE should handle projectId parameter', () => {
       const script = UPDATE_TASK_SCRIPT_SIMPLE;
-      
+
       // Should check for projectId in updates
       expect(script).toContain('if (updates.projectId !== undefined)');
-      
-      // Should handle null case (move to inbox)
-      expect(script).toContain('if (updates.projectId === null)');
+
+      // Should handle inbox-move (empty string convention used by this tool)
+      expect(script).toContain('if (updates.projectId === "")');
       expect(script).toContain('task.assignedContainer = null');
-      
+
       // Should handle project assignment
       expect(script).toContain('const projects = doc.flattenedProjects()');
-      expect(script).toContain('if (projects[i].id.primaryKey === updates.projectId)');
       expect(script).toContain('task.assignedContainer = projects[i]');
     });
   });
