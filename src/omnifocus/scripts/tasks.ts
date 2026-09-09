@@ -557,8 +557,10 @@ export const COMPLETE_TASK_SCRIPT = `
       return JSON.stringify({ error: true, message: 'Task already completed' });
     }
     
-    // Mark as complete using JXA property setter
-    task.completed = true;
+    // The completed property is read-only in the OmniFocus dictionary;
+    // assigning to it always throws "Access not allowed". Use the
+    // mark complete command instead.
+    task.markComplete();
     
     return JSON.stringify({
       id: task.id(),
