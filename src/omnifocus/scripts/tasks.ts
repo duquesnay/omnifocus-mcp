@@ -557,8 +557,10 @@ export const COMPLETE_TASK_SCRIPT = `
       return JSON.stringify({ error: true, message: 'Task already completed' });
     }
     
-    // Mark as complete using JXA property setter
-    task.completed = true;
+    // The completed property is read-only in the OmniFocus dictionary;
+    // assigning to it always throws "Access not allowed". Use the
+    // mark complete command instead.
+    task.markComplete();
     
     return JSON.stringify({
       id: task.id(),
@@ -577,34 +579,20 @@ export const COMPLETE_TASK_SCRIPT = `
 // Omni Automation script for completing tasks (bypasses JXA permission issues)
 export const COMPLETE_TASK_OMNI_SCRIPT = `
   const taskId = {{taskId}};
-  
-  try {
-    // Find task by ID using Omni Automation
-    const tasks = flattenedTasks;
-    let targetTask = null;
-    
-    tasks.forEach(task => {
-      if (task.id() === taskId) {
-        targetTask = task;
-      }
-    });
-    
+
+  (() => {
+    const targetTask = Task.byIdentifier(taskId);
+
     if (!targetTask) {
-      throw new Error('Task not found');
+      throw new Error("Task not found: " + taskId);
     }
-    
+
     if (targetTask.completed) {
-      throw new Error('Task already completed');
+      throw new Error("Task already completed: " + targetTask.name);
     }
-    
-    // Mark as complete using Omni Automation method
+
     targetTask.markComplete();
-    
-    // Return success (URL scheme doesn't return values directly)
-    return true;
-  } catch (error) {
-    throw new Error("Failed to complete task: " + error.toString());
-  }
+  })();
 `;
 
 export const DELETE_TASK_SCRIPT = `
@@ -646,32 +634,16 @@ export const DELETE_TASK_SCRIPT = `
 // Omni Automation script for deleting tasks (bypasses JXA permission issues)
 export const DELETE_TASK_OMNI_SCRIPT = `
   const taskId = {{taskId}};
-  
-  try {
-    // Find task by ID using Omni Automation
-    const tasks = flattenedTasks;
-    let targetTask = null;
-    
-    tasks.forEach(task => {
-      if (task.id() === taskId) {
-        targetTask = task;
-      }
-    });
-    
+
+  (() => {
+    const targetTask = Task.byIdentifier(taskId);
+
     if (!targetTask) {
-      throw new Error('Task not found');
+      throw new Error("Task not found: " + taskId);
     }
-    
-    const taskName = targetTask.name;
-    
-    // Delete using Omni Automation method
+
     deleteObject(targetTask);
-    
-    // Return success (URL scheme doesn't return values directly)
-    return true;
-  } catch (error) {
-    throw new Error("Failed to delete task: " + error.toString());
-  }
+  })();
 `;
 
 export const TODAYS_AGENDA_SCRIPT = `
